@@ -937,10 +937,10 @@ def runSimAdditive(num_parts, r, dt, tf):
 
         out = out.tolist()
         #rm any particles that have exited the system
-        for j in range(current_num_parts):
-            if (out[j] >= length*scalef -1):
-                out = out[:j] + out[j+4:]
-                current_num_parts -= 1
+        # for j in range(current_num_parts):
+        #     if (out[j] >= length*scalef -1):
+        #         out = out[:j] + out[j+4:]
+        #         current_num_parts -= 1
 
 
         curr_t = solver.t
@@ -968,8 +968,12 @@ def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
     else:
         print ("created directory %s " % path)
 
+<<<<<<< HEAD
     with open(path + name + TRAJ_PATH, 'wb') as f:
         pickle.dump(traj, f)
+=======
+trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 100)
+>>>>>>> small fixes
 
     with open(path + name + TIME_PATH, 'wb') as f:
         pickle.dump(t, f)
