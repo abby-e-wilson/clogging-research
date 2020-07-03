@@ -165,7 +165,7 @@ def plotStreamFun(streamfun, n) :
 
 n = int(len_m*scalef)
 streamfun = calcStreamFun(n)
-plotStreamFun(streamfun, n)
+# plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
 
@@ -247,7 +247,7 @@ def plotFluidVel(streamfun, n):
     plt.title("Velocity of fluid flow in x dir at different y values")
     plt.show()
 
-plotFluidVel(streamfun, n)
+# plotFluidVel(streamfun, n)
 
 #
 # # Calculate the velocity for any point in the field by averaging values from the velocity grid
@@ -573,7 +573,7 @@ def generateAnim(y, num_parts, r, streamfun, n):
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
     plt.ylim(0,ymax)
-    plt.pcolor(X, Y, v_graph)
+    plt.pcolor(X, Y, u_graph)
     plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
 
@@ -584,6 +584,7 @@ def generateAnim(y, num_parts, r, streamfun, n):
 
     def updateParticles_2(timestep):
 
+        print(str(timestep))
         positions = []
         curr_num_parts = int(len(y[:][int(timestep*5)])/4)
         for i in range(curr_num_parts):
@@ -592,8 +593,17 @@ def generateAnim(y, num_parts, r, streamfun, n):
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="white", fill=False))
                 ax.add_artist(circles[i])
+                print("created new circle")
 
             circles[i].center = positions[-1]
+
+        for i in range(len(circles) -curr_num_parts):
+            circles[curr_num_parts+i].center = (-5,-5)
+
+        # print(str(curr_num_parts), str(len(circles)))
+        # if (curr_num_parts < len(circles)):
+        #     print("deleting")
+        #     circles = circles[:curr_num_parts]
 
         return circles,
 
@@ -608,32 +618,32 @@ def generateAnim(y, num_parts, r, streamfun, n):
 # Run a simulation
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
-
-n = int(len_m*scalef)
-streamfun = calcStreamFun(n)
-u, v = getFluidVel(streamfun, n)
-#format: x_i, y_i, vx_i, vy_i, x_i+1...
-pos0 = []
-num_parts = 3
-for j in range(num_parts):
-    if j == 1:
-        x = 22.7
-    else:
-        x = 24
-    pos0 = pos0 + [x, 24.993 + j*5.0093, 0, 0]
-
-pos0 = pos0 + [18, 23, 0, 0]
-# pos0 = pos0 + [18, 27, 0, 0]
-# pos0 = pos0 + [15, 31, 0, 0]
-# pos0 = pos0 + [18, 35, 0, 0]
-# pos0 = pos0 + [18, 39, 0, 0]
-
-r = 1.6
-trajectory, energy, forces, t, der = runSim(num_parts+1, r, 0.1, 25, pos0, u, v)
-
-ani = generateAnim(trajectory, num_parts, r, streamfun, n)
-# ani.show()
-plt.show()
+#
+# n = int(len_m*scalef)
+# streamfun = calcStreamFun(n)
+# u, v = getFluidVel(streamfun, n)
+# #format: x_i, y_i, vx_i, vy_i, x_i+1...
+# pos0 = []
+# num_parts = 3
+# for j in range(num_parts):
+#     if j == 1:
+#         x = 22.7
+#     else:
+#         x = 24
+#     pos0 = pos0 + [x, 24.993 + j*5.0093, 0, 0]
+#
+# pos0 = pos0 + [18, 23, 0, 0]
+# # pos0 = pos0 + [18, 27, 0, 0]
+# # pos0 = pos0 + [15, 31, 0, 0]
+# # pos0 = pos0 + [18, 35, 0, 0]
+# # pos0 = pos0 + [18, 39, 0, 0]
+#
+# r = 1.6
+# trajectory, energy, forces, t, der = runSim(num_parts+1, r, 0.1, 25, pos0, u, v)
+#
+# ani = generateAnim(trajectory, num_parts, r, streamfun, n)
+# # ani.show()
+# plt.show()
 # ani.save('clog.06242020_temporary.gif', writer='imagemagick')
 
 # HTML(ani.to_jshtml())
@@ -808,92 +818,114 @@ plt.show()
 #
 # # ### Testing: adding/removing particles
 #
-# # In[30]:
-#
-#
-# #volume of system
-# vol = 2 * (30*(60-5)/2)
-# vol_part = 4/3 * math.pi * (1.5)**3
-#
-#
-# # In[21]:
-#
-#
-# def randStartingPt(r):
-#
-#     y = r + random.random()*(40)
-#     return [5, 5 + y, 0, 0]
-#
-#
-# # In[22]:
-#
-#
-# #Params
-# #num_parts - number of particles
-# #r - radius of particle
-# #dt - timestep
-# #tf - end time
-# #returns - y - postiions over time
-# #          energy - energy at each timestep
-# #          forces - forces at each timestep
-# #          times - time at each iteration
-# #          derives - derivatives at each timestep
-# def runSimAdditive(num_parts, r, dt, tf):
-#
-#     energy = []
-#     forces = []
-#     times = []
-#     derivs = []
-#     xvel, yvel = interpolateVelFn(u, v, 1, 1)
-#
-#     current_num_parts = 1
-#
-#     #format: x_i, y_i, vx_i, vy_i, x_i+1...
-#     pos0 = []
-#     pos0 = pos0 + randStartingPt(r)
-#
+
+#Randomly introduce a new particle that doesn't overlap with other existing particles
+# r: radius
+# existing_particles: list of positions of other particles (x1, y1, vx1, vy1, x2 ...)
+# return pos of new particle, start at 0,0 if couldn't find a pos in a reasonable # attempts
+
+def randStartingPt(r, existing_particles, num_particles):
+
+    x = 5
+    no_col = False
+    count = 0
+
+    while (no_col == False and count < 30):
+
+        y = r + slope*x + 1 + random.random()*(len_m*scalef - 2*slope*x - 2*r -2)
+
+        no_col = True
+
+        for i in range(num_particles) :
+            xi = existing_particles[i*4]
+            yi = existing_particles[i*4+1]
+            distance = math.sqrt((x-xi)**2+(y-yi)**2)
+            if (distance < 2*r): no_col = False
+
+        count += 1
+
+    if (no_col):
+        print([x,y])
+        return [x, y, 0, 0]
+
+    return []
+
+
+#Params
+#num_parts - number of particles
+#r - radius of particle
+#dt - timestep
+#tf - end time
+#returns - y - postiions over time
+#          energy - energy at each timestep
+#          forces - forces at each timestep
+#          times - time at each iteration
+#          derives - derivatives at each timestep
+def runSimAdditive(num_parts, r, dt, tf):
+
+    energy = []
+    forces = []
+    times = []
+    derivs = []
+    u, v = getFluidVel(streamfun, n)
+    xvel, yvel = interpolateVelFn(u, v, 1, 1)
+
+    current_num_parts = 0
+
+    #format: x_i, y_i, vx_i, vy_i, x_i+1...
+    pos0 = []
+    pos0 = pos0 + randStartingPt(r, [], current_num_parts)
+    current_num_parts += 1
+
+    solver = ode(stepODE).set_integrator('lsoda')
+    solver.set_initial_value(pos0, 0).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+    y, t = [pos0], []
+    for i in range(num_parts):
+
+#         print("tf: " + str(tf * ((i+1)/num_parts)))
+        while solver.successful() and (solver.t < (tf * ((i+1)/num_parts))):
+            t.append(solver.t)
+            out = solver.integrate(solver.t+dt)
+#             y = np.concatenate((y, [out]), axis=0)
+            y = y+[out.tolist()]
+
+#         print(solver.successful())
+
+        out = out.tolist()
+        #rm any particles that have exited the system
+        for j in range(current_num_parts):
+            if (out[j] >= length*scalef -1):
+                out = out[:j] + out[j+4:]
+                current_num_parts -= 1
+
+
+        curr_t = solver.t
+        new_part = randStartingPt(r, out, current_num_parts)
+        pos = out + new_part
+        if (new_part != []) : current_num_parts += 1
+        solver = ode(stepODE).set_integrator('lsoda')
+        solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+
+#         print(out)
+#         print(curr_t)
+
 #     solver = ode(stepODE).set_integrator('lsoda')
-#     solver.set_initial_value(pos0, 0).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
-#     y, t = [pos0], []
-#     for i in range(num_parts):
-#
-# #         print("tf: " + str(tf * ((i+1)/num_parts)))
-#         while solver.successful() and (solver.t < (tf * ((i+1)/num_parts))):
+#     solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+#     while solver.successful() and (solver.t < 90):
 #             t.append(solver.t)
 #             out = solver.integrate(solver.t+dt)
 # #             y = np.concatenate((y, [out]), axis=0)
 #             y = y+[out.tolist()]
-#
-# #         print(solver.successful())
-#         curr_t = solver.t
-#         pos = out.tolist() + randStartingPt(r)
-#         current_num_parts += 1
-#         solver = ode(stepODE).set_integrator('lsoda')
-#         solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
-#
-# #         print(out)
-# #         print(curr_t)
-#
-#     return y, energy, forces, times, derivs
-#
-#
-# # In[23]:
-#
-#
-# get_ipython().run_line_magic('matplotlib', 'inline')
-#
-# random.seed(2)
-# num_particles = 30
-# r = 1.5
-#
-# trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 40)
-#
-# # print("\n\n")
-# # print(*trajectory, sep="\n")
-#
-#
-# ani = generateAnim(trajectory, num_particles, r)
-# HTML(ani.to_jshtml())
-#
-#
-# #
+
+
+    return y, energy, forces, times, derivs
+
+
+random.seed(2)
+num_particles = 5
+r = 1.5
+
+trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 40)
+
+ani = generateAnim(trajectory, num_particles, r, streamfun, n)
+plt.show()
