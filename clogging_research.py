@@ -37,8 +37,8 @@ import argparse
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
 len_m = 300
 len_c = 30
-length = 300
-scalef = 2/10
+length = 800
+scalef = 1/10
 slope = (len_m-len_c)/length
 
 #===Particles===
@@ -90,9 +90,9 @@ def streamfuncCoeffsMatrix(n, x, y):
         for j in range(n):
             if (j==0 or j==n-1):
                 coeffs[i*n+j][i*n+j] = 1
-            elif (i<n/2 and (j<=slope*i or j>=(n-slope*i))):
+            elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
                 coeffs[i*n+j][i*n+j] = 1
-            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(n-len_c*scalef-slope*i))):
+            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
                 coeffs[i*n+j][i*n+j] = 1
             else:
                 coeffs[i*n+j][i*n + (j-1)] = x**2/2/(x**2 + y**2)
@@ -105,8 +105,6 @@ def streamfuncCoeffsMatrix(n, x, y):
 
 
 # calculate the boundary conditions for the streamfunction
-
-# In[4]:
 
 #Parameters
 #n - size of the matrix
@@ -123,7 +121,7 @@ def getStreamFuncVals(n):
 
     for i in range(n):
         for j in range(n):
-            if (j>=(slope*i+len_c*scalef) and j>=(n-slope*i)):
+            if (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
                 vals[i*n+j] = 1
 
     return vals
@@ -175,8 +173,12 @@ def plotStreamFun(streamfun, n) :
     plt.show()
 
 
-n = int(len_m*scalef)
+n = int(length*scalef)
 streamfun = calcStreamFun(n)
+<<<<<<< HEAD
+=======
+# plotStreamFunVals(n)
+>>>>>>> updated channel geom to match holway
 # plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
@@ -202,46 +204,48 @@ def dPsi_dy(psi, dy, i, j):
 
 # Plot the velocities in the x and y directions based on the streamfunction. vel_x = dPsi/dy, vel_y = - dPsi/dx
 
-def getFluidVel(streamfun, n):
-    u = np.zeros((n,n))
-    v = np.zeros((n,n))
+def getFluidVel(streamfun, nx, ny):
+    u = np.zeros((nx,ny))
+    v = np.zeros((nx,ny))
 
-    for i in range(1,n-1):
-        for j in range(1,n-1):
-            u[i][j] = dPsi_dy(streamfun, .1, i, j)
-            v[i][j] = -dPsi_dx(streamfun, .1, i, j)
+    for i in range(1,nx-1):
+        for j in range(1,ny-1):
+            u[i][j] = dPsi_dy(streamfun, .1, i, j)/2
+            v[i][j] = -dPsi_dx(streamfun, .1, i, j)/2
 
     return u, v
 
-def getFluidVelGraphic(streamfun, n):
+def getFluidVelGraphic(streamfun, nx, ny):
     #pcolor graphs seem to plot the x values on the vertical axis so I manualy flipped these for visualization purposes
-    u_graph = np.zeros((n,n))
-    v_graph = np.zeros((n,n))
+    u_graph = np.zeros((ny,nx))
+    v_graph = np.zeros((ny,nx))
 
-    for i in range(1,n-1):
-        for j in range(1,n-1):
+    for i in range(1,nx-1):
+        for j in range(1,ny-1):
             u_graph[j][i] = dPsi_dy(streamfun, .1, i, j)
             v_graph[j][i] = -dPsi_dx(streamfun, .1, i, j)
 
     return u_graph, v_graph
 
-def plotFluidVel(streamfun, n):
+def plotFluidVel(streamfun, nx, ny):
 
-    u, v = getFluidVel(streamfun, n)
-    u_graph, v_graph = getFluidVelGraphic(streamfun, n)
+    u, v = getFluidVel(streamfun, nx, ny)
+    u_graph, v_graph = getFluidVelGraphic(streamfun, nx, ny)
 
     plt.pcolor(v_graph)
     plt.colorbar()
     plt.title("Velocity in y direction")
+    plt.gca().set_aspect('equal', adjustable='box')
     plt.show()
 
     plt.pcolor(u_graph)
     plt.colorbar()
     plt.title("Velocity in x direction")
+    plt.gca().set_aspect('equal', adjustable='box')
     plt.show()
 
     for j in range(5):
-        vels = [v[10+j*10][i] for i in range(n)]
+        vels = [v[10+j*10][i] for i in range(ny)]
         label = (10+j*10)
         plt.plot(vels, label=label)
 
@@ -251,7 +255,7 @@ def plotFluidVel(streamfun, n):
 
 
     for j in range(6):
-        vels = [u[i][25+j*1] for i in range(n)]
+        vels = [u[i][25+j*1] for i in range(nx)]
         label = (25+j*1)
         plt.plot(vels, label=label)
 
@@ -259,7 +263,11 @@ def plotFluidVel(streamfun, n):
     plt.title("Velocity of fluid flow in x dir at different y values")
     plt.show()
 
+<<<<<<< HEAD
 # plotFluidVel(streamfun, n)
+=======
+# plotFluidVel(streamfun, 80,30)
+>>>>>>> updated channel geom to match holway
 
 #
 # # Calculate the velocity for any point in the field by averaging values from the velocity grid
@@ -308,10 +316,9 @@ def getVelGrid(x, y, u, v, dx, dy):
 #dx: step in x dir
 #dy: step in y dir
 #returns: vel functions in x and y dirs
-def interpolateVelFn(u, v, dx, dy):
-    n = len(u)
-    x = np.arange(0, n, 1)
-    y = np.arange(0, n, 1)
+def interpolateVelFn(u, v, dx, dy, nx, ny):
+    x = np.arange(0, nx, 1)
+    y = np.arange(0, ny, 1)
 
     velX = interpolate.interp2d(x, y, u.flatten(), kind='cubic')
     velY = interpolate.interp2d(x, y, v.flatten(), kind='cubic')
@@ -319,7 +326,7 @@ def interpolateVelFn(u, v, dx, dy):
     return velX, velY
 
 def plotVelFun(u, v):
-    velX, velY = interpolateVelFn(u, v, len_m/n, len_m/n)
+    velX, velY = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 
     #calculate the y velocity at a range of points
     yvels_20 = [velY(20, i/3) for i in range(n*3)]
@@ -348,22 +355,26 @@ def plotVelFun(u, v):
 
 # Graph the velocity field
 
-def plotVelocityField(u, v):
-    X = np.zeros((60,60))
-    Y = np.zeros((60,60))
+def plotVelocityField(u, v, nx, ny):
+    X = np.zeros((nx, ny))
+    Y = np.zeros((nx, ny))
 
-    for i in range(60):
-        for j in range(60):
+    for i in range(nx):
+        for j in range(ny):
             X[i][j] = i
             Y[i][j] = j
 
     plt.quiver(X, Y, u, v, headaxislength=6)
     plt.title("Velocity Field for Pipe with Constriction")
+    plt.gca().set_aspect('equal', adjustable='box')
 
-    plt.plot((0, 30, 60), (60, 35, 60), c="blue")
-    plt.plot((0, 30, 60), (0, 25, 0), c="blue")
-    plt.colorbar()
+    # plt.plot((0, 30, 60), (60, 35, 60), c="blue")
+    # plt.plot((0, 30, 60), (0, 25, 0), c="blue")
+    # plt.colorbar()
+    plt.show()
 
+# u, v = getFluidVel(streamfun, 80, 30)
+# plotVelocityField(u, v, 80, 30)
 
 #Run Simulation
 
@@ -550,11 +561,12 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 #          derives - derivatives at each timestep
 def runSim(num_parts, r, dt, tf, pos0, u, v):
 
+    print("starting sim....")
     energy = []
     forces = []
     times = []
     derivs = []
-    xvel, yvel = interpolateVelFn(u, v, 1, 1)
+    xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 
     solver = ode(stepODE).set_integrator('lsoda')
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
@@ -566,6 +578,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
 #     print(solver.get_return_code())
 
+    print("finished sim...")
     return y, energy, forces, times, derivs
 
 
@@ -573,20 +586,31 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
+<<<<<<< HEAD
 def generateAnim(y, r, n):
+=======
+def generateAnim(y, num_parts, r, streamfun):
+>>>>>>> updated channel geom to match holway
     xmax = length*scalef
     ymax = len_m*scalef
-    num_steps = int(len_m*scalef)
-    X = np.linspace(0, xmax, num_steps)
-    Y = np.linspace(0, ymax, num_steps)
+    X = np.linspace(0, xmax, int(length*scalef))
+    Y = np.linspace(0, ymax, int(len_m*scalef))
 
+<<<<<<< HEAD
     streamfun = calcStreamFun(n)
     u_graph, v_graph = getFluidVelGraphic(streamfun, n)
+=======
+    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+>>>>>>> updated channel geom to match holway
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
     plt.ylim(0,ymax)
+<<<<<<< HEAD
     plt.pcolor(X, Y, u_graph)
+=======
+    plt.pcolor(X, Y, u)
+>>>>>>> updated channel geom to match holway
     plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
 
@@ -627,26 +651,45 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 #
 # n = int(len_m*scalef)
+<<<<<<< HEAD
 # streamfun = calcStreamFun(n)
 # u, v = getFluidVel(streamfun, n)
+=======
+# streamfun = calcStreamFun(80)
+# u, v = getFluidVel(streamfun, 80, 30)
+>>>>>>> updated channel geom to match holway
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 # num_parts = 3
 # for j in range(num_parts):
 #     if j == 1:
+<<<<<<< HEAD
 #         x = 22.7
 #     else:
 #         x = 24
 #     pos0 = pos0 + [x, 24.993 + j*5.0093, 0, 0]
 #
 # pos0 = pos0 + [18, 23, 0, 0]
+=======
+#         x = 23.5
+#     else:
+#         x = 24
+#     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
+#
+# # pos0 = pos0 + [18, 23, 0, 0]
+>>>>>>> updated channel geom to match holway
 # # pos0 = pos0 + [18, 27, 0, 0]
 # # pos0 = pos0 + [15, 31, 0, 0]
 # # pos0 = pos0 + [18, 35, 0, 0]
 # # pos0 = pos0 + [18, 39, 0, 0]
 #
+<<<<<<< HEAD
 # r = 1.6
 # trajectory, energy, forces, t, der = runSim(num_parts+1, r, 0.1, 25, pos0, u, v)
+=======
+# r = .7
+# trajectory, energy, forces, t, der = runSim(num_parts, r, 0.1, 45, pos0, u, v)
+>>>>>>> updated channel geom to match holway
 #
 # ani = generateAnim(trajectory, num_parts, r, streamfun, n)
 # # ani.show()
@@ -822,9 +865,7 @@ def generateAnim(y, r, n):
 # plt.title("Forces over time")
 # # plt.ylim(-1,1)
 #
-#
-# # ### Testing: adding/removing particles
-#
+#### Testing: adding/removing particles
 
 #Randomly introduce a new particle that doesn't overlap with other existing particles
 # r: radius
@@ -874,8 +915,8 @@ def runSimAdditive(num_parts, r, dt, tf):
     forces = []
     times = []
     derivs = []
-    u, v = getFluidVel(streamfun, n)
-    xvel, yvel = interpolateVelFn(u, v, 1, 1)
+    u, v = getFluidVel(streamfun, int(length*scalef), int(len_m*scalef))
+    xvel, yvel = interpolateVelFn(u, v, 1, 1, int(length*scalef), int(len_m*scalef))
 
     current_num_parts = 0
 
@@ -904,6 +945,7 @@ def runSimAdditive(num_parts, r, dt, tf):
 
         curr_t = solver.t
         new_part = randStartingPt(r, out, current_num_parts)
+
         pos = out + new_part
         if (new_part != []) : current_num_parts += 1
 
