@@ -21,6 +21,10 @@ import matplotlib.cm as cm
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
 
+import pickle
+import os
+
+
 # Constants
 
 # In[2]:
@@ -561,13 +565,14 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
-def generateAnim(y, num_parts, r, streamfun, n):
+def generateAnim(y, r, n):
     xmax = length*scalef
     ymax = len_m*scalef
     num_steps = int(len_m*scalef)
     X = np.linspace(0, xmax, num_steps)
     Y = np.linspace(0, ymax, num_steps)
 
+    streamfun = calcStreamFun(n)
     u_graph, v_graph = getFluidVelGraphic(streamfun, n)
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
@@ -593,17 +598,12 @@ def generateAnim(y, num_parts, r, streamfun, n):
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="white", fill=False))
                 ax.add_artist(circles[i])
-                print("created new circle")
 
             circles[i].center = positions[-1]
 
+        #hide circles that have exited the system
         for i in range(len(circles) -curr_num_parts):
             circles[curr_num_parts+i].center = (-5,-5)
-
-        # print(str(curr_num_parts), str(len(circles)))
-        # if (curr_num_parts < len(circles)):
-        #     print("deleting")
-        #     circles = circles[:curr_num_parts]
 
         return circles,
 
@@ -882,14 +882,10 @@ def runSimAdditive(num_parts, r, dt, tf):
     y, t = [pos0], []
     for i in range(num_parts):
 
-#         print("tf: " + str(tf * ((i+1)/num_parts)))
         while solver.successful() and (solver.t < (tf * ((i+1)/num_parts))):
             t.append(solver.t)
             out = solver.integrate(solver.t+dt)
-#             y = np.concatenate((y, [out]), axis=0)
             y = y+[out.tolist()]
-
-#         print(solver.successful())
 
         out = out.tolist()
         #rm any particles that have exited the system
@@ -903,29 +899,73 @@ def runSimAdditive(num_parts, r, dt, tf):
         new_part = randStartingPt(r, out, current_num_parts)
         pos = out + new_part
         if (new_part != []) : current_num_parts += 1
+
         solver = ode(stepODE).set_integrator('lsoda')
         solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
 
-#         print(out)
-#         print(curr_t)
-
-#     solver = ode(stepODE).set_integrator('lsoda')
-#     solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
-#     while solver.successful() and (solver.t < 90):
-#             t.append(solver.t)
-#             out = solver.integrate(solver.t+dt)
-# #             y = np.concatenate((y, [out]), axis=0)
-#             y = y+[out.tolist()]
-
+    writeData("testing", y, times, energy, False, False, 0, r)
 
     return y, energy, forces, times, derivs
 
+
+
+def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
+
+    path = "/home/aw/Documents/Clogging/clogging-research/outputs/" + name + "/"
+
+    try:
+        os.mkdir(path)
+    except OSError:
+        print ("failed to create directory %s" % path)
+    else:
+        print ("created directory %s " % path)
+
+    with open(path + name + "_trajectory.txt", 'wb') as f:
+        pickle.dump(traj, f)
+
+    with open(path + name + "_time.txt", 'wb') as f:
+        pickle.dump(t, f)
+
+    with open(path + name + "_energy.txt", 'wb') as f:
+        pickle.dump(energy, f)
+
+    plt.plot(t, energy)
+    plt.savefig(path+name+"_energyFig.png")
+
+    file = open(path+name+"_overview.txt", "w+")
+    file.write(str(r))
+    file.write("\nTotal Time: %f" % t[-1])
+    file.write("\nClog: %s" % clog)
+    file.write("\nMetastable: %s" % metastable)
+    file.write("\nClog occured at: %f" % clog_t)
+    file.close()
+
+def makeAnimFromFile(name):
+
+    path = "/home/aw/Documents/Clogging/clogging-research/outputs/" + name + "/"
+
+    n = int(len_m*scalef)
+
+    with open(path + name + "_trajectory.txt", 'rb') as f:
+        traj = pickle.load(f)
+
+    # print(str(traj[1][0]))
+
+    file = open(path+name+"_overview.txt", "r")
+    r = file.readline()
+    file.close
+
+    print(r.splitlines()[0])
+
+    ani = generateAnim(traj, float(r), n)
+    plt.show()
 
 random.seed(2)
 num_particles = 5
 r = 1.5
 
-trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 40)
+# trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 20)
+makeAnimFromFile("testing")
 
-ani = generateAnim(trajectory, num_particles, r, streamfun, n)
-plt.show()
+# ani = generateAnim(trajectory, r, n)
+# plt.show()
