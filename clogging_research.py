@@ -174,11 +174,11 @@ def plotStreamFun(streamfun, n) :
 
 
 
-n = int(length*scalef)
-streamfun = calcStreamFun(n)
-
-plotStreamFunVals(n)
-plotStreamFun(streamfun, n)
+# n = int(length*scalef)
+# streamfun = calcStreamFun(n)
+#
+# plotStreamFunVals(n)
+# plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
 
@@ -588,14 +588,14 @@ def generateAnim(y, r, n):
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
 
-    streamfun = calcStreamFun(n)
-    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+    # streamfun = calcStreamFun(n)
+    # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
     plt.ylim(0,ymax)
-    plt.pcolor(X, Y, u)
-    plt.colorbar()
+    # plt.pcolor(X, Y, u)
+    # plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
 
     plt.plot((0, xmax/2 +1, xmax), (ymax, scalef*(len_m+len_c)/2 + 1, ymax), c="blue")
@@ -611,7 +611,7 @@ def generateAnim(y, r, n):
             positions.append((y[:][int(timestep)*5][0+i*4], y[:][int(timestep)*5][1+i*4]))
 
             if (i >= len(circles)):
-                circles.append(Circle((0,0), r, color="white", fill=False))
+                circles.append(Circle((0,0), r, color="black", fill=False))
                 ax.add_artist(circles[i])
 
             circles[i].center = positions[-1]
@@ -995,12 +995,12 @@ parser.set_defaults(animate=False)
 
 #TODO expand
 def runExtendedSim(name, radius, timestep, timef):
-    runSimAdditive(name, int(timef/5), radius, timestep, timef)
+    runSimAdditive(name, int(timef/10), radius, timestep, timef)
 
 args = parser.parse_args()
 
 if (args.run_sim):
-    runExtendedSim(name, args.radius, args.step, args.time)
+    runExtendedSim(args.name, args.radius, args.step, args.time)
 elif (args.animate):
     makeAnimFromFile(args.name)
 else:
