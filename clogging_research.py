@@ -173,13 +173,12 @@ def plotStreamFun(streamfun, n) :
     plt.show()
 
 
+
 n = int(length*scalef)
 streamfun = calcStreamFun(n)
-<<<<<<< HEAD
-=======
-# plotStreamFunVals(n)
->>>>>>> updated channel geom to match holway
-# plotStreamFun(streamfun, n)
+
+plotStreamFunVals(n)
+plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
 
@@ -263,11 +262,7 @@ def plotFluidVel(streamfun, nx, ny):
     plt.title("Velocity of fluid flow in x dir at different y values")
     plt.show()
 
-<<<<<<< HEAD
-# plotFluidVel(streamfun, n)
-=======
 # plotFluidVel(streamfun, 80,30)
->>>>>>> updated channel geom to match holway
 
 #
 # # Calculate the velocity for any point in the field by averaging values from the velocity grid
@@ -586,31 +581,20 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
-<<<<<<< HEAD
 def generateAnim(y, r, n):
-=======
-def generateAnim(y, num_parts, r, streamfun):
->>>>>>> updated channel geom to match holway
     xmax = length*scalef
     ymax = len_m*scalef
     X = np.linspace(0, xmax, int(length*scalef))
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
-<<<<<<< HEAD
+
     streamfun = calcStreamFun(n)
-    u_graph, v_graph = getFluidVelGraphic(streamfun, n)
-=======
     u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
->>>>>>> updated channel geom to match holway
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
     plt.ylim(0,ymax)
-<<<<<<< HEAD
-    plt.pcolor(X, Y, u_graph)
-=======
     plt.pcolor(X, Y, u)
->>>>>>> updated channel geom to match holway
     plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
 
@@ -651,45 +635,26 @@ def generateAnim(y, num_parts, r, streamfun):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 #
 # n = int(len_m*scalef)
-<<<<<<< HEAD
-# streamfun = calcStreamFun(n)
-# u, v = getFluidVel(streamfun, n)
-=======
 # streamfun = calcStreamFun(80)
 # u, v = getFluidVel(streamfun, 80, 30)
->>>>>>> updated channel geom to match holway
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 # num_parts = 3
 # for j in range(num_parts):
 #     if j == 1:
-<<<<<<< HEAD
-#         x = 22.7
-#     else:
-#         x = 24
-#     pos0 = pos0 + [x, 24.993 + j*5.0093, 0, 0]
-#
-# pos0 = pos0 + [18, 23, 0, 0]
-=======
 #         x = 23.5
 #     else:
 #         x = 24
 #     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
 #
 # # pos0 = pos0 + [18, 23, 0, 0]
->>>>>>> updated channel geom to match holway
 # # pos0 = pos0 + [18, 27, 0, 0]
 # # pos0 = pos0 + [15, 31, 0, 0]
 # # pos0 = pos0 + [18, 35, 0, 0]
 # # pos0 = pos0 + [18, 39, 0, 0]
 #
-<<<<<<< HEAD
-# r = 1.6
-# trajectory, energy, forces, t, der = runSim(num_parts+1, r, 0.1, 25, pos0, u, v)
-=======
 # r = .7
 # trajectory, energy, forces, t, der = runSim(num_parts, r, 0.1, 45, pos0, u, v)
->>>>>>> updated channel geom to match holway
 #
 # ani = generateAnim(trajectory, num_parts, r, streamfun, n)
 # # ani.show()
@@ -909,12 +874,14 @@ def randStartingPt(r, existing_particles, num_particles):
 #          forces - forces at each timestep
 #          times - time at each iteration
 #          derives - derivatives at each timestep
-def runSimAdditive(num_parts, r, dt, tf):
+def runSimAdditive(name, num_parts, r, dt, tf):
 
     energy = []
     forces = []
     times = []
     derivs = []
+
+    streamfun = calcStreamFun(80)
     u, v = getFluidVel(streamfun, int(length*scalef), int(len_m*scalef))
     xvel, yvel = interpolateVelFn(u, v, 1, 1, int(length*scalef), int(len_m*scalef))
 
@@ -952,7 +919,7 @@ def runSimAdditive(num_parts, r, dt, tf):
         solver = ode(stepODE).set_integrator('lsoda')
         solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
 
-    writeData("testing", y, times, energy, False, False, 0, r)
+    writeData(name, y, times, energy, False, False, 0, r)
 
     return y, energy, forces, times, derivs
 
@@ -968,12 +935,8 @@ def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
     else:
         print ("created directory %s " % path)
 
-<<<<<<< HEAD
     with open(path + name + TRAJ_PATH, 'wb') as f:
         pickle.dump(traj, f)
-=======
-trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 100)
->>>>>>> small fixes
 
     with open(path + name + TIME_PATH, 'wb') as f:
         pickle.dump(t, f)
@@ -996,7 +959,7 @@ def makeAnimFromFile(name):
 
     path = PATH + name + "/"
 
-    n = int(len_m*scalef)
+    n = int(length*scalef)
 
     with open(path + name + TRAJ_PATH, 'rb') as f:
         traj = pickle.load(f)
@@ -1031,13 +994,13 @@ parser.add_argument("-na", "--no-animate", dest="animate", action="store_false",
 parser.set_defaults(animate=False)
 
 #TODO expand
-def runExtendedSim(radius, timestep, timef):
-    runSimAdditive(int(timef/5), radius, timestep, timef)
+def runExtendedSim(name, radius, timestep, timef):
+    runSimAdditive(name, int(timef/5), radius, timestep, timef)
 
 args = parser.parse_args()
 
 if (args.run_sim):
-    runExtendedSim(args.radius, args.step, args.time)
+    runExtendedSim(name, args.radius, args.step, args.time)
 elif (args.animate):
     makeAnimFromFile(args.name)
 else:
