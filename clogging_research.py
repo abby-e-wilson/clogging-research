@@ -23,6 +23,7 @@ from matplotlib.patches import Circle
 
 import pickle
 import os
+import argparse
 
 
 # Constants
@@ -55,6 +56,13 @@ dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
 beta = 6 * math.pi * dyn_vis * R_actual
 x0 = mass/beta
 t0 = mass/beta
+
+#===File OD consts===
+PATH = "/home/aw/Documents/Clogging/clogging-research/outputs/"
+TRAJ_PATH = "_trajectory.txt"
+OVERVIEW_PATH = "_overview.txt"
+TIME_PATH = "_time.txt"
+ENERGY_PATH = "_energy.txt"
 
 
 # ### Define the Streamfunction
@@ -589,7 +597,6 @@ def generateAnim(y, r, n):
 
     def updateParticles_2(timestep):
 
-        print(str(timestep))
         positions = []
         curr_num_parts = int(len(y[:][int(timestep*5)])/4)
         for i in range(curr_num_parts):
@@ -908,10 +915,9 @@ def runSimAdditive(num_parts, r, dt, tf):
     return y, energy, forces, times, derivs
 
 
-
 def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
 
-    path = "/home/aw/Documents/Clogging/clogging-research/outputs/" + name + "/"
+    path = PATH + name + "/"
 
     try:
         os.mkdir(path)
@@ -920,20 +926,20 @@ def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
     else:
         print ("created directory %s " % path)
 
-    with open(path + name + "_trajectory.txt", 'wb') as f:
+    with open(path + name + TRAJ_PATH, 'wb') as f:
         pickle.dump(traj, f)
 
-    with open(path + name + "_time.txt", 'wb') as f:
+    with open(path + name + TIME_PATH, 'wb') as f:
         pickle.dump(t, f)
 
-    with open(path + name + "_energy.txt", 'wb') as f:
+    with open(path + name + ENERGY_PATH, 'wb') as f:
         pickle.dump(energy, f)
 
     plt.plot(t, energy)
     plt.savefig(path+name+"_energyFig.png")
 
-    file = open(path+name+"_overview.txt", "w+")
-    file.write(str(r))
+    file = open(path+name+OVERVIEW_PATH, "w+")
+    file.write(str(r)) #radius, needs to be easily readable
     file.write("\nTotal Time: %f" % t[-1])
     file.write("\nClog: %s" % clog)
     file.write("\nMetastable: %s" % metastable)
@@ -942,30 +948,51 @@ def writeData(name, traj, t, energy, clog, metastable, clog_t, r):
 
 def makeAnimFromFile(name):
 
-    path = "/home/aw/Documents/Clogging/clogging-research/outputs/" + name + "/"
+    path = PATH + name + "/"
 
     n = int(len_m*scalef)
 
-    with open(path + name + "_trajectory.txt", 'rb') as f:
+    with open(path + name + TRAJ_PATH, 'rb') as f:
         traj = pickle.load(f)
 
-    # print(str(traj[1][0]))
-
-    file = open(path+name+"_overview.txt", "r")
+    file = open(path+name+OVERVIEW_PATH, "r")
     r = file.readline()
     file.close
+    r = float(r.splitlines()[0])
 
-    print(r.splitlines()[0])
-
-    ani = generateAnim(traj, float(r), n)
+    ani = generateAnim(traj, r, n)
     plt.show()
 
-random.seed(2)
-num_particles = 5
-r = 1.5
 
-# trajectory, energy, forces, t, der = runSimAdditive(num_particles, r, 0.1, 20)
-makeAnimFromFile("testing")
+parser = argparse.ArgumentParser()
+parser.add_argument("name",
+                    help="name to store output under/fetch output from")
+parser.add_argument("-r", "--radius", type=float, default = 1,
+                    help="particle radius")
+parser.add_argument("-t", "--time", type=float, default=1000,
+                    help="total time")
+parser.add_argument("-s", "--step", type=float, default=0.1,
+                    help="timestep")
+parser.add_argument("-run", "--run-sim", dest="run_sim", action="store_true",
+                    help="run a simulation")
+parser.add_argument("-nrun", "--no-sim", dest="run_sim", action="store_false",
+                    help="dont run a simulation")
+parser.set_defaults(run_sim=True)
+parser.add_argument("-a", "--animate", dest="animate", action="store_true",
+                    help="create animation from stored output")
+parser.add_argument("-na", "--no-animate", dest="animate", action="store_false",
+                    help="dont create animation from stored output")
+parser.set_defaults(animate=False)
 
-# ani = generateAnim(trajectory, r, n)
-# plt.show()
+#TODO expand
+def runExtendedSim(radius, timestep, timef):
+    runSimAdditive(int(timef/5), radius, timestep, timef)
+
+args = parser.parse_args()
+
+if (args.run_sim):
+    runExtendedSim(args.radius, args.step, args.time)
+elif (args.animate):
+    makeAnimFromFile(args.name)
+else:
+    print("No task assigned.\nEnding program")
