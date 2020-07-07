@@ -859,7 +859,8 @@ def randStartingPt(r, existing_particles, num_particles):
 
 
 #Params
-#num_parts - number of particles
+#particle_delay - time between eachc particle being introduced into the system
+#save_prog - write progress after this time interval
 #r - radius of particle
 #dt - timestep
 #tf - end time
@@ -868,7 +869,7 @@ def randStartingPt(r, existing_particles, num_particles):
 #          forces - forces at each timestep
 #          times - time at each iteration
 #          derives - derivatives at each timestep
-def runSimAdditive(num_parts, r, dt, tf):
+def runSimAdditive(particle_delay, save_prog, r, dt, tf):
 
     energy = []
     forces = []
@@ -878,6 +879,7 @@ def runSimAdditive(num_parts, r, dt, tf):
     xvel, yvel = interpolateVelFn(u, v, 1, 1)
 
     current_num_parts = 0
+    last_wrote = 0
 
     #format: x_i, y_i, vx_i, vy_i, x_i+1...
     pos0 = []
@@ -887,28 +889,39 @@ def runSimAdditive(num_parts, r, dt, tf):
     solver = ode(stepODE).set_integrator('lsoda')
     solver.set_initial_value(pos0, 0).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
     y, t = [pos0], []
-    for i in range(num_parts):
 
-        while solver.successful() and (solver.t < (tf * ((i+1)/num_parts))):
+    # for i in range(num_parts):
+    while solver.successful() and (solver.t < tf):
+
+        ti = solver.t
+
+        #run until its time to add a new particle
+        while solver.successful() and (solver.t < (ti + particle_delay)) and solver.t < tf:
             t.append(solver.t)
             out = solver.integrate(solver.t+dt)
             y = y+[out.tolist()]
 
-        out = out.tolist()
+
         #rm any particles that have exited the system
+        out = out.tolist()
         for j in range(current_num_parts):
             if (out[j] >= length*scalef -1):
                 out = out[:j] + out[j+4:]
                 current_num_parts -= 1
 
-
+        #add a new particle
         curr_t = solver.t
         new_part = randStartingPt(r, out, current_num_parts)
         pos = out + new_part
         if (new_part != []) : current_num_parts += 1
 
+        #restart integrator w/ new sys of eqs
         solver = ode(stepODE).set_integrator('lsoda')
         solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+
+        #periodically save progress
+        if (curr_t > last_wrote + save_prog):
+            writeData("testing", y, times, energy, False, False, 0, r)
 
     writeData("testing", y, times, energy, False, False, 0, r)
 
@@ -973,6 +986,10 @@ parser.add_argument("-t", "--time", type=float, default=1000,
                     help="total time")
 parser.add_argument("-s", "--step", type=float, default=0.1,
                     help="timestep")
+parser.add_argument("-p", "--particle-gap", type=float, default=10,
+                    help="timestep between adding particles")
+parser.add_argument("-sv", "--save-interval", type=float, default=100,
+                    help="save progress after this interval")
 parser.add_argument("-run", "--run-sim", dest="run_sim", action="store_true",
                     help="run a simulation")
 parser.add_argument("-nrun", "--no-sim", dest="run_sim", action="store_false",
@@ -985,13 +1002,13 @@ parser.add_argument("-na", "--no-animate", dest="animate", action="store_false",
 parser.set_defaults(animate=False)
 
 #TODO expand
-def runExtendedSim(radius, timestep, timef):
-    runSimAdditive(int(timef/5), radius, timestep, timef)
+def runExtendedSim(gap, save_prog, radius, timestep, timef):
+    runSimAdditive(gap, save_prog, radius, timestep, timef)
 
 args = parser.parse_args()
 
 if (args.run_sim):
-    runExtendedSim(args.radius, args.step, args.time)
+    runExtendedSim(args.particle_gap, args.save_interval, args.radius, args.step, args.time)
 elif (args.animate):
     makeAnimFromFile(args.name)
 else:
