@@ -531,6 +531,70 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
     energy.append(V_col)
     return ddt
 
+#Parameters
+#t - timestep
+#pos - array of the form (x0, y0, vx0, vy0, x1, ...)
+#num_parts - total # particles in simulation
+#R - radius of particle
+#energy - 1d array to document the energy values at each step
+#vVel, yVel - the functions for calculating the velocity at a certain position
+#Returns: derivatives of each value of the position array
+#         [x0', y0', x0'', y0'', x1'...]
+def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
+
+    ddt = []
+    V_col = 0
+    times.append(t)
+
+    for i in range(num_parts):
+        x = pos[i*4]
+        y = pos[i*4+1]
+        vx = pos[i*4+2]
+        vy = pos[i*4+3]
+
+        #force due to fluid flow
+        #TODO: testing w/o nondim
+        Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
+
+        #force due to collisions
+        Fx_col = 0
+        Fy_col = 0
+        for j in range(num_parts):
+            if j != i:
+                distance = math.sqrt((x-pos[j*4])**2 + (y-pos[j*4+1])**2)
+
+                #if the particles overlap
+                if (distance < 2*R):
+                    xj = pos[j*4]
+                    yj = pos[j*4+1]
+                    vxj = pos[j*4+2]
+                    vyj = pos[j*4+3]
+
+                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
+                    Fx_col += Fx
+                    Fy_col += Fy
+                    V_col += V
+
+        #force from wall potential
+        wallX = 0
+        wallY = 0
+        if (x <= length*scalef/2):
+
+            #calculate the point on the edge of the particle which is closest to the wall
+            #the edge of the particle is what matters, not the center
+            #this is a vector parpendicular to the wall
+            if (y <= len_m/2*scalef):
+                direction = unitVec((-1, 1/slope))
+            else:
+                direction = unitVec((-1, -1/slope))
+            wallX, wallY = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+
+        Fx_net = Fx_fluid + wallX + Fx_col
+        Fy_net = Fy_fluid + wallY + Fy_col
+        ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
+
+    energy.append(V_col)
+    return ddt
 
 # Run a simulation. Sets up and moniters the solver
 
@@ -653,178 +717,8 @@ def generateAnim(y, r, n):
 # plt.show()
 # ani.save('clog.06242020_temporary.gif', writer='imagemagick')
 
-# HTML(ani.to_jshtml())
-#
-#
-# # Plot the forces from differnt sources (fluid flow, the wall, collisions) as a function of time
-#
-# # In[62]:
-#
-#
-# fcx = []
-# fwx = []
-# ffx = []
-#
-# for i in range(len(forces)):
-#     fcx.append(forces[i][2][0])
-#     fwx.append(forces[i][1][0])
-#     ffx.append(forces[i][0][0])
-#
-# plt.plot(t, fwx, label="wall")
-# plt.plot(t, fcx, label="collision net")
-# # plt.plot(t)
-# plt.plot(t, ffx, label="fluid")
-# plt.legend()
-# plt.title("Forces over time - x direction")
-# plt.ylim(-2,2)
-# # plt.savefig("clog_temp_06242020_forces.png")
-#
-#
-# # Plot the total energy of the system over time
-#
-# # In[63]:
-#
-#
-# plt.plot(t, energy)
-# plt.title("Energy over time")
-# plt.ylim(0,.10)
-# plt.show()
-# # plt.savefig("clog_temp_06242020_energy.png")
-#
-# plt.plot(t)
-# plt.title("Time at each step")
-# plt.show()
-#
-#
-# # Single particle behavior
-#
-# # In[507]:
-#
-#
-# get_ipython().run_line_magic('matplotlib', 'inline')
-#
-# #format: x_i, y_i, vx_i, vy_i, x_i+1...
-# pos0 = []
-# num_parts = 1
-# for i in range(num_parts):
-#     if i == 1:
-#         x = 18
-#     else:
-#         x = 25
-#     pos0 = pos0 + [x, 27+ 5*i, -4, 4]
-#
-# num_particles = 1
-# r = 1.5
-# trajectory, energy, forces, t, der = runSim(num_particles, r, 0.1, 30, pos0)
-#
-# ani = generateAnim(trajectory, num_particles, r)
-# HTML(ani.to_jshtml())
-#
-#
-# # In[508]:
-#
-#
-# fcx = []
-# fwx = []
-# ffx = []
-#
-# for i in range(len(forces)):
-#     fcx.append(forces[i][2][0])
-#     fwx.append(forces[i][1][0])
-#     ffx.append(forces[i][0][0])
-#
-# plt.plot(t, fwx, label="wall")
-# plt.plot(t, fcx, label="collision net")
-# plt.plot(t, ffx, label="fluid")
-# plt.legend()
-# plt.title("Forces over time")
-# # plt.ylim(-1,1)
-#
-#
-# # Plot streamlines of particles in the fluid flow
-#
-# # ### Testing: trajectories of individual particles at various points
-#
-# # In[509]:
-#
-#
-# R = 1
-# trajectory1, energy1, forces1, times1, d1 = runSim(1, R, 0.1, 50, [22,25,1e-8,1e-8])
-# trajectory2, energy2, forces2, times2, d2 = runSim(1, R, 0.1, 50, [22,30,0,0])
-# trajectory3, energy3, forces3, times3, d3 = runSim(1, R, 0.1, 50, [22,35,1e-8,1e-8])
-#
-# #initialize figure and create a scatterplot
-# fig, ax = plt.subplots()
-# plt.pcolor(Y, X, u_graph)
-# plt.colorbar()
-#
-# plt.plot(trajectory1[:,0], trajectory1[:,1], color="white")
-# plt.plot(trajectory2[:,0], trajectory2[:,1], color="white")
-# plt.plot(trajectory3[:,0], trajectory3[:,1], color="white")
-#
-# plt.title("Particle trajectories over time")
-# plt.show()
-#
-#
-# # In[510]:
-#
-#
-# plt.plot(times1, label="sucess")
-# plt.plot(times2, label="error")
-# plt.legend()
-# plt.xlabel("iteration number")
-# plt.ylabel("total time elapsed")
-# plt.title("Time vs Step Number")
-#
-#
-# # In[511]:
-#
-#
-# plt.plot([row[0] for row in d1], label="x'")
-# plt.plot([row[1] for row in d1], label="y'")
-# plt.plot([row[2] for row in d1], label="x''")
-# plt.plot([row[3] for row in d1], label="y''")
-# plt.legend()
-# plt.xlabel("iteration number")
-# plt.ylabel("derivative")
-# plt.title("Derivatives over Time: Particle off centerline")
-# plt.show()
-#
-# plt.plot([row[0] for row in d2], label="x'")
-# plt.plot([row[1] for row in d2], label="y'")
-# plt.plot([row[2] for row in d2], label="x''")
-# plt.plot([row[3] for row in d2], label="y''")
-# plt.legend()
-# plt.xlabel("iteration number")
-# plt.ylabel("derivative")
-# plt.title("Derivatives over Time: Particle on centerline")
-# plt.show()
-#
-#
-# # These graphs show that particles on and off the centerline now both have successful models. Previously, the particle on the centerline would throw an error, but this bug has been resolved and both now have reasonable timesteps and derivatives
-#
-# # In[512]:
-#
-#
-# fcx = []
-# fwx = []
-# ffx = []
-#
-# for i in range(len(forces1)):
-#     fcx.append(forces1[i][2][0])
-#     fwx.append(forces1[i][1][0])
-#     ffx.append(forces1[i][0][0])
-#
-# plt.plot(fwx, label="wall")
-# plt.plot(fcx, label="collision net")
-# plt.plot(ffx, label="fluid")
-# plt.legend()
-# plt.title("Forces over time")
-# # plt.ylim(-1,1)
-#
-#
-# # ### Testing: adding/removing particles
-#
+#===Testing: adding/removing particles===
+
 
 #Randomly introduce a new particle that doesn't overlap with other existing particles
 # r: radius
@@ -869,7 +763,7 @@ def randStartingPt(r, existing_particles, num_particles):
 #          forces - forces at each timestep
 #          times - time at each iteration
 #          derives - derivatives at each timestep
-def runSimAdditive(particle_delay, save_prog, r, dt, tf):
+def runSimAdditive(name, particle_delay, save_prog, r, dt, tf):
 
     energy = []
     forces = []
@@ -880,14 +774,19 @@ def runSimAdditive(particle_delay, save_prog, r, dt, tf):
 
     current_num_parts = 0
     last_wrote = 0
+    step_pos_E = 0
+
+    clog = False
+    metastable = False
+    clogt = 0
 
     #format: x_i, y_i, vx_i, vy_i, x_i+1...
     pos0 = []
     pos0 = pos0 + randStartingPt(r, [], current_num_parts)
     current_num_parts += 1
 
-    solver = ode(stepODE).set_integrator('lsoda')
-    solver.set_initial_value(pos0, 0).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+    solver = ode(stepODELong).set_integrator('lsoda')
+    solver.set_initial_value(pos0, 0).set_f_params(current_num_parts, r, energy, times, xvel, yvel)
     y, t = [pos0], []
 
     # for i in range(num_parts):
@@ -901,6 +800,15 @@ def runSimAdditive(particle_delay, save_prog, r, dt, tf):
             out = solver.integrate(solver.t+dt)
             y = y+[out.tolist()]
 
+            if energy[-1]>0 : step_pos_E += (t[-1] -t[-2])
+            else: step_pos_E = 0
+
+            if step_pos_E > dt :
+                clog = True
+                clogt = t[-1]
+
+            if clog == True and energy[-1] == 0:
+                metastable = True
 
         #rm any particles that have exited the system
         out = out.tolist()
@@ -916,14 +824,14 @@ def runSimAdditive(particle_delay, save_prog, r, dt, tf):
         if (new_part != []) : current_num_parts += 1
 
         #restart integrator w/ new sys of eqs
-        solver = ode(stepODE).set_integrator('lsoda')
-        solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, forces, times, derivs, xvel, yvel)
+        solver = ode(stepODELong).set_integrator('lsoda')
+        solver.set_initial_value(pos, curr_t).set_f_params(current_num_parts, r, energy, times, xvel, yvel)
 
         #periodically save progress
         if (curr_t > last_wrote + save_prog):
-            writeData("testing", y, times, energy, False, False, 0, r)
+            writeData(name, y, times, energy, clog, metastable, clogt, r)
 
-    writeData("testing", y, times, energy, False, False, 0, r)
+    writeData(name, y, times, energy, clog, metastable, clogt, r)
 
     return y, energy, forces, times, derivs
 
@@ -1002,13 +910,13 @@ parser.add_argument("-na", "--no-animate", dest="animate", action="store_false",
 parser.set_defaults(animate=False)
 
 #TODO expand
-def runExtendedSim(gap, save_prog, radius, timestep, timef):
-    runSimAdditive(gap, save_prog, radius, timestep, timef)
+def runExtendedSim(name, gap, save_prog, radius, timestep, timef):
+    runSimAdditive(name, gap, save_prog, radius, timestep, timef)
 
 args = parser.parse_args()
 
 if (args.run_sim):
-    runExtendedSim(args.particle_gap, args.save_interval, args.radius, args.step, args.time)
+    runExtendedSim(args.name, args.particle_gap, args.save_interval, args.radius, args.step, args.time)
 elif (args.animate):
     makeAnimFromFile(args.name)
 else:
