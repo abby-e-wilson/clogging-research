@@ -822,10 +822,14 @@ def runSimAdditive(name, particle_delay, save_prog, r, dt, tf):
 
         #rm any particles that have exited the system
         out = out.tolist()
+        remove = []
         for j in range(current_num_parts):
-            if (out[j*4] >= length*scalef -1):
-                out = out[:j*4] + out[j*4+4:]
-                current_num_parts -= 1
+            print(j*4, len(out))
+            if (out[j*4] >= length*scalef -1): remove.append(j)
+
+        for i in remove:
+            out = out[:i*4] + out[i*4+4:]
+            current_num_parts -= 1
 
         #add a new particle
         curr_t = solver.t
