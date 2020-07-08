@@ -51,6 +51,7 @@ E = 10 ** 6  #start with super soft spheres
 poisson = 0.3
 alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
+maxV = 0.2 #max fluid velocity
 
 #===Nondimentionalization Constants===
 beta = 6 * math.pi * dyn_vis * R_actual
@@ -168,14 +169,15 @@ def plotStreamFun(streamfun, n) :
 
     # plt.pcolor(stream, vmin = -1, vmax = 1)
     plt.pcolor(streamfun_graph)
+    plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamfunction")
     plt.colorbar()
     plt.show()
 
 
 
-# n = int(length*scalef)
-# streamfun = calcStreamFun(n)
+n = int(length*scalef)
+streamfun = calcStreamFun(80)
 #
 # plotStreamFunVals(n)
 # plotStreamFun(streamfun, n)
@@ -206,23 +208,33 @@ def dPsi_dy(psi, dy, i, j):
 def getFluidVel(streamfun, nx, ny):
     u = np.zeros((nx,ny))
     v = np.zeros((nx,ny))
+    maxval = 0
 
     for i in range(1,nx-1):
         for j in range(1,ny-1):
-            u[i][j] = dPsi_dy(streamfun, .1, i, j)/2
-            v[i][j] = -dPsi_dx(streamfun, .1, i, j)/2
-
+            u[i][j] = dPsi_dy(streamfun, .1, i, j)
+            v[i][j] = -dPsi_dx(streamfun, .1, i, j)
+            mag = math.sqrt(u[i][j]**2+v[i][j]**2)
+            if mag > maxval : maxval = mag
+    u = u/maxval * maxV
+    v = v/maxval * maxV
+    print(maxval, maxV)
     return u, v
 
 def getFluidVelGraphic(streamfun, nx, ny):
     #pcolor graphs seem to plot the x values on the vertical axis so I manualy flipped these for visualization purposes
     u_graph = np.zeros((ny,nx))
     v_graph = np.zeros((ny,nx))
+    maxval = 0
 
     for i in range(1,nx-1):
         for j in range(1,ny-1):
             u_graph[j][i] = dPsi_dy(streamfun, .1, i, j)
             v_graph[j][i] = -dPsi_dx(streamfun, .1, i, j)
+            mag = math.sqrt(u_graph[j][i]**2+v_graph[j][i]**2)
+            if mag > maxval : maxval = mag
+    u_graph = u_graph/maxval * maxV
+    v_graph = v_graph/maxval * maxV
 
     return u_graph, v_graph
 
@@ -235,12 +247,14 @@ def plotFluidVel(streamfun, nx, ny):
     plt.colorbar()
     plt.title("Velocity in y direction")
     plt.gca().set_aspect('equal', adjustable='box')
+    plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.show()
 
     plt.pcolor(u_graph)
     plt.colorbar()
     plt.title("Velocity in x direction")
     plt.gca().set_aspect('equal', adjustable='box')
+    plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.show()
 
     for j in range(5):
@@ -321,14 +335,14 @@ def interpolateVelFn(u, v, dx, dy, nx, ny):
     return velX, velY
 
 def plotVelFun(u, v):
-    velX, velY = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+    velX, velY = interpolateVelFn(u, v, .1, .1, length*scalef, len_m*scalef)
 
     #calculate the y velocity at a range of points
-    yvels_20 = [velY(20, i/3) for i in range(n*3)]
+    yvels_20 = [velY(40, i/3) for i in range(n*3)]
     yvals = [i/3 for i in range(n*3)]
 
     plt.plot(yvals, yvels_20, label="interpolated values")
-    plt.scatter(np.arange(0,n,1), v[20,:], label="grid values", color='red')
+    plt.scatter(np.arange(0,30,1), v[40,:], label="grid values", color='red')
     plt.title("Velocity in the Y direction at x=20")
     plt.xlabel("Y position")
     plt.ylabel("Velocity in the Y direction")
@@ -336,17 +350,19 @@ def plotVelFun(u, v):
     plt.show()
 
     #calculate the x velocity at a range of points
-    xvels_20 = [velX(20, i/3) for i in range(n*3)]
+    xvels_20 = [velX(40, i/3) for i in range(n*3)]
     xvals = [i/3 for i in range(n*3)]
 
     plt.plot(xvals, xvels_20, label="interpolated values")
-    plt.scatter(np.arange(0,n,1), u[20,:], label="grid values", color='red')
+    plt.scatter(np.arange(0,30,1), u[40,:], label="grid values", color='red')
     plt.title("Velocity in the X direction at x=20")
     plt.xlabel("X position")
     plt.ylabel("Velocity in the X direction")
     plt.legend()
     plt.show()
 
+# u, v = getFluidVel(streamfun, 80, 30)
+# plotVelFun(u,v)
 
 # Graph the velocity field
 
@@ -359,12 +375,14 @@ def plotVelocityField(u, v, nx, ny):
             X[i][j] = i
             Y[i][j] = j
 
-    plt.quiver(X, Y, u, v, headaxislength=6)
+    plt.quiver(X, Y, u, v, headaxislength=6, units='inches')
     plt.title("Velocity Field for Pipe with Constriction")
     plt.gca().set_aspect('equal', adjustable='box')
 
-    # plt.plot((0, 30, 60), (60, 35, 60), c="blue")
-    # plt.plot((0, 30, 60), (0, 25, 0), c="blue")
+    xmax = length* scalef
+    ymax = len_m*scalef
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     # plt.colorbar()
     plt.show()
 
@@ -432,7 +450,7 @@ def calcPotentialWall(x, y, slope):
     V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
     Fx = -a*slope*V
     Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
-    return Fx, Fy
+    return Fx, Fy, V
 
 # Misc geometry helper functions
 
@@ -449,8 +467,8 @@ def unitVec(v):
 # Plot the force of the wall as a function of y, calculated using the wall potential function
 
 def plotWallForce():
-    x = np.linspace(10,50,100)
-    fx, fy = calcPotentialWall(20, x, slope)
+    x = np.linspace(10,20,100)
+    fx, fy, vwall = calcPotentialWall(40, x, slope)
 
     plt.plot(x, fx, label="x direction")
     plt.plot(x, fy, label = "y direction")
@@ -459,8 +477,9 @@ def plotWallForce():
     plt.title("Wall force at x=20 accross y values")
     plt.xlabel("y")
     plt.ylabel("Force")
+    plt.show()
 
-
+# plotWallForce()
 # Step the simulation: Calculate the derivatives at a given point
 
 #Parameters
@@ -513,6 +532,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
         #force from wall potential
         wallX = 0
         wallY = 0
+        V_wall = 0
         if (x <= length*scalef/2):
 
             #calculate the point on the edge of the particle which is closest to the wall
@@ -522,7 +542,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
-            wallX, wallY = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+            wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
 
         #document forces
         if i == 0:
@@ -534,7 +554,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 
     derivs.append(ddt)
 
-    energy.append(V_col)
+    energy.append(V_col+V_wall)
     return ddt
 
 #Parameters
@@ -584,6 +604,7 @@ def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
         #force from wall potential
         wallX = 0
         wallY = 0
+        V_wall = 0
         if (x <= length*scalef/2):
 
             #calculate the point on the edge of the particle which is closest to the wall
@@ -593,13 +614,13 @@ def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
-            wallX, wallY = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+            wallX, wallY, V = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
 
         Fx_net = Fx_fluid + wallX + Fx_col
         Fy_net = Fy_fluid + wallY + Fy_col
         ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
 
-    energy.append(V_col)
+    energy.append(V_col+V_wall)
     return ddt
 
 # Run a simulation. Sets up and moniters the solver
@@ -651,9 +672,8 @@ def generateAnim(y, r, n):
     X = np.linspace(0, xmax, int(length*scalef))
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
-
-    # streamfun = calcStreamFun(n)
-    # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+    streamfun = calcStreamFun(80)
+    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
@@ -661,9 +681,10 @@ def generateAnim(y, r, n):
     # plt.pcolor(X, Y, u)
     # plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
+    plt.grid(b=True, which='major', color='#666666', linestyle='-')
 
-    plt.plot((0, xmax/2 +1, xmax), (ymax, scalef*(len_m+len_c)/2 + 1, ymax), c="blue")
-    plt.plot((0, xmax/2+1, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
     circles = []
 
@@ -687,7 +708,7 @@ def generateAnim(y, r, n):
         return circles,
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int((len(y[:])-1)/5), interval=100)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int((len(y[:])-1)/5), interval=10)
 
     return ani
 
@@ -697,33 +718,34 @@ def generateAnim(y, r, n):
 # Run a simulation
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
-#
-# n = int(len_m*scalef)
+# #
+# n = int(length*scalef)
 # streamfun = calcStreamFun(80)
 # u, v = getFluidVel(streamfun, 80, 30)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
-# num_parts = 3
-# for j in range(num_parts):
-#     if j == 1:
-#         x = 23.5
-#     else:
-#         x = 24
-#     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
+# num_parts = 4
+# # for j in range(num_parts):
+# #     if j == 1:
+# #         x = 23.5
+# #     else:
+# #         x = 24
+# #     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
 #
+# pos0 = [24, 24.71211, 0, 0, 22.785, 30.0, 0, 0, 24, 35.28789, 0, 0, 22, 27, 0, 0]
+# pos0 = [33,12,0,0,32.6162,15,0,0,33,18,0,0,32,13.5,0,0]
 # # pos0 = pos0 + [18, 23, 0, 0]
 # # pos0 = pos0 + [18, 27, 0, 0]
 # # pos0 = pos0 + [15, 31, 0, 0]
 # # pos0 = pos0 + [18, 35, 0, 0]
 # # pos0 = pos0 + [18, 39, 0, 0]
 #
-# r = .7
-# trajectory, energy, forces, t, der = runSim(num_parts, r, 0.1, 45, pos0, u, v)
+# r = .5
+# trajectory, energy, forces, t, der = runSim(num_parts, r, 0.2, 120, pos0, u, v)
 #
-# ani = generateAnim(trajectory, num_parts, r, streamfun, n)
+# ani = generateAnim(trajectory, r, n)
 # # ani.show()
-# plt.show()
-# ani.save('clog.06242020_temporary.gif', writer='imagemagick')
+# ani.save('clog.070820_4_updatedgeom.gif', writer='imagemagick')
 
 #===Testing: adding/removing particles===
 
@@ -833,10 +855,19 @@ def runSimAdditive(name, particle_delay, save_prog, r, dt, tf):
 
         #add a new particle
         curr_t = solver.t
-        new_part = randStartingPt(r, out, current_num_parts)
+        add_new = random.random()*3 #add a randomiized number of particles in (0,1,2)
+        pos = out
+        #add 1 new particle
+        if (add_new > 1):
+            new_part = randStartingPt(r, pos, current_num_parts)
+            pos = pos + new_part
+            if (new_part != []) : current_num_parts += 1
 
-        pos = out + new_part
-        if (new_part != []) : current_num_parts += 1
+        #add another new particle
+        if (add_new > 2):
+            new_part = randStartingPt(r, pos, current_num_parts)
+            pos = pos + new_part
+            if (new_part != []) : current_num_parts += 1
 
         #restart integrator w/ new sys of eqs
         solver = ode(stepODELong).set_integrator('lsoda')
