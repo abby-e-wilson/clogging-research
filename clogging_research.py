@@ -43,7 +43,6 @@ slope = (len_m-len_c)/length
 
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
-R_graphic = 5
 R_actual = 10 * 10**(-6)
 
 #===Physical Constants===
@@ -51,7 +50,7 @@ E = 10 ** 6  #start with super soft spheres
 poisson = 0.3
 alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
-maxV = 0.2 #max fluid velocity
+maxV = .2 #max fluid velocity
 
 #===Nondimentionalization Constants===
 beta = 6 * math.pi * dyn_vis * R_actual
@@ -414,6 +413,19 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 
     return Fx, Fy, Vij
 
+def calcAdhesiveForce(R, xi, yi, xj, yj):
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    f = 0.5
+    #calculate potential
+    Fx = - f * unit[0]
+    Fy = - f * unit[1]
+
+    return Fx, Fy
+
+
 #calculate the force on a particle from the fluid
 #x, y - position of particle
 #vx, vy - velocity of particle
@@ -528,13 +540,16 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
+                    # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
+                    #
+                    # Fx_col += Fa_x
+                    # Fy_col += Fa_y
 
         #force from wall potential
         wallX = 0
         wallY = 0
         V_wall = 0
         if (x <= length*scalef/2):
-
             #calculate the point on the edge of the particle which is closest to the wall
             #the edge of the particle is what matters, not the center
             #this is a vector parpendicular to the wall
@@ -543,6 +558,9 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
             else:
                 direction = unitVec((-1, -1/slope))
             wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+            # if (abs(wallX) > 0.001) :
+            #     wallX += -0.5*direction[0]
+            #     wallY += -0.5*direction[1]
 
         #document forces
         if i == 0:
@@ -600,6 +618,11 @@ def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
+
+                    # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
+                    #
+                    # Fx += Fa_x
+                    # Fy += Fa_y
 
         #force from wall potential
         wallX = 0
@@ -691,9 +714,11 @@ def generateAnim(y, r, n):
     def updateParticles_2(timestep):
 
         positions = []
-        curr_num_parts = int(len(y[:][int(timestep*5)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*10)])/4)
+
+        curr_num_parts = int(len(y[:][int(timestep*10)])/4)
         for i in range(curr_num_parts):
-            positions.append((y[:][int(timestep)*5][0+i*4], y[:][int(timestep)*5][1+i*4]))
+            positions.append((y[:][int(timestep*10)][0+i*4], y[:][int(timestep*10)][1+i*4]))
 
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="black", fill=False))
@@ -708,7 +733,7 @@ def generateAnim(y, r, n):
         return circles,
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int((len(y[:])-1)/5), interval=10)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/10), interval=1)
 
     return ani
 
@@ -718,34 +743,35 @@ def generateAnim(y, r, n):
 # Run a simulation
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
-# #
-# n = int(length*scalef)
-# streamfun = calcStreamFun(80)
-# u, v = getFluidVel(streamfun, 80, 30)
+# # #
+n = int(length*scalef)
+streamfun = calcStreamFun(80)
+u, v = getFluidVel(streamfun, 80, 30)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
-# num_parts = 4
-# # for j in range(num_parts):
-# #     if j == 1:
-# #         x = 23.5
-# #     else:
-# #         x = 24
-# #     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
-#
+num_parts = 6
+# for j in range(num_parts):
+#     if j == 1:
+#         x = 23.5
+#     else:
+#         x = 24
+#     pos0 = pos0 + [x, 10 + j*5.05, 0, 0]
+
 # pos0 = [24, 24.71211, 0, 0, 22.785, 30.0, 0, 0, 24, 35.28789, 0, 0, 22, 27, 0, 0]
-# pos0 = [33,12,0,0,32.6162,15,0,0,33,18,0,0,32,13.5,0,0]
-# # pos0 = pos0 + [18, 23, 0, 0]
-# # pos0 = pos0 + [18, 27, 0, 0]
-# # pos0 = pos0 + [15, 31, 0, 0]
-# # pos0 = pos0 + [18, 35, 0, 0]
-# # pos0 = pos0 + [18, 39, 0, 0]
-#
-# r = .5
-# trajectory, energy, forces, t, der = runSim(num_parts, r, 0.2, 120, pos0, u, v)
-#
-# ani = generateAnim(trajectory, r, n)
-# # ani.show()
-# ani.save('clog.070820_4_updatedgeom.gif', writer='imagemagick')
+# pos0 = [33,12,0,0,32.523,15,0,0,33,18,0,0]#,32,13.5,0,0]
+pos0 =[30,13,0,0,30,17,0,0,27,12,0,0,27,18,0,0,27,15,0,0,25,14,0,0]
+# pos0 = pos0 + [18, 23, 0, 0]
+# pos0 = pos0 + [18, 27, 0, 0]
+# pos0 = pos0 + [15, 31, 0, 0]
+# pos0 = pos0 + [18, 35, 0, 0]
+# pos0 = pos0 + [18, 39, 0, 0]
+
+r = 1
+trajectory, energy, forces, t, der = runSim(num_parts, r, 0.1, 250, pos0, u, v)
+
+ani = generateAnim(trajectory, r, n)
+plt.show()
+ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
 
 #===Testing: adding/removing particles===
 
