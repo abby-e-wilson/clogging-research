@@ -35,9 +35,9 @@ import argparse
 # len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-len_m = 300
-len_c = 30
-length = 800
+len_m = 600
+len_c = 300
+length = 600
 scalef = 1/10
 slope = (len_m-len_c)/length
 
@@ -392,6 +392,16 @@ def plotVelocityField(u, v, nx, ny):
 
 # Calculate the forces on a particle
 
+
+#returns a unit vector in the same dir as some 2d vector v
+def unitVec(v):
+    v_mag = math.sqrt(v[0]**2 + v[1]**2)
+    if (v_mag > 0):
+        v_unit = (v[0]/v_mag, v[1]/v_mag)
+    else:
+        v_unit = (0, 0)
+    return v_unit
+
 #Calculate the forces from a collision between 2 particles
 #R - radius of the particle (in proportion to the system)
 #xi, yi - position of particle 1
@@ -412,6 +422,75 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
     Fy = - dVdr * unit[1]
 
     return Fx, Fy, Vij
+
+
+#Calculate the forces from a collision between 2 particles
+#R - radius of the particle (in proportion to the system)
+#xi, yi - position of particle 1
+#vxi, vyi - velocity of particle 1
+#xj, yj - position of particle 2
+#vxj, vyj - velocity of particle 2
+#returns - the force on particle i in the x and y directions and the potential
+def calcCollisionAd(R, xi, yi, xj, yj):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    # a0 = (9*math.pi*R**2/E)**(1/9)
+    # a0=0.01*R
+    # d = (2*R - distance)/a0
+    #
+    # #calculate potential
+    # Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * ((1-distance/(2*R))**alpha)
+    # dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * alpha/2/R * (-d**3+d**(alpha-1))
+    # Fx = - dVdr * unit[0]
+    # Fy = - dVdr * unit[1]
+    #
+    # if (yj > yi):
+    #     print(d, Fy)
+    #
+
+    gamma = .0001
+    Eeff = E/2/(1-poisson**2)
+    Fc = 3*math.pi*R*gamma
+    a0 = (9*math.pi*R**2*gamma/E)**(1/3)
+    Dc = a0**2/2/(6**(1/3))/R
+
+    Reff = R/2 # 1/Reff = 1/R1 + 1/R2 but R1=R2 here
+    deformation = (2*R - distance)/2
+    a = math.sqrt(Reff * deformation)
+
+    Fn = 4*Fc *((a/a0)**3-(a/a0)**(3/2))
+
+    Fx = Fn * unit[0]
+    Fy = Fn * unit[1]
+
+    Vij = 1
+    return Fx, Fy, Vij
+
+
+def plotColForceAd():
+    R = 2
+    xi=0
+    yi=0
+    xj= np.linspace(4, 3.9,100)
+    yj=0
+
+    overlap = 2- xj
+
+    f = []
+    d = []
+    for i in range(100):
+        fx, fy, v = calcCollisionAd(R, xi, yi,xj[i], yj)
+        f.append(fx)
+        d.append(v)
+
+    plt.plot(overlap, f)
+    plt.ylim(-100,100)
+    plt.show()
+
+# plotColForceAd()
 
 def calcAdhesiveForce(R, xi, yi, xj, yj):
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
@@ -465,15 +544,6 @@ def calcPotentialWall(x, y, slope):
     return Fx, Fy, V
 
 # Misc geometry helper functions
-
-#returns a unit vector in the same dir as some 2d vector v
-def unitVec(v):
-    v_mag = math.sqrt(v[0]**2 + v[1]**2)
-    if (v_mag > 0):
-        v_unit = (v[0]/v_mag, v[1]/v_mag)
-    else:
-        v_unit = (0, 0)
-    return v_unit
 
 
 # Plot the force of the wall as a function of y, calculated using the wall potential function
@@ -536,12 +606,12 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = calcCollisionAd(R, x, y, xj, yj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
-                    #
+
                     # Fx_col += Fa_x
                     # Fy_col += Fa_y
 
@@ -714,11 +784,11 @@ def generateAnim(y, r, n):
     def updateParticles_2(timestep):
 
         positions = []
-        curr_num_parts = int(len(y[:][int(timestep*10)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
 
-        curr_num_parts = int(len(y[:][int(timestep*10)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
         for i in range(curr_num_parts):
-            positions.append((y[:][int(timestep*10)][0+i*4], y[:][int(timestep*10)][1+i*4]))
+            positions.append((y[:][int(timestep*20)][0+i*4], y[:][int(timestep*20)][1+i*4]))
 
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="black", fill=False))
@@ -733,7 +803,7 @@ def generateAnim(y, r, n):
         return circles,
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/10), interval=1)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/20), interval=1)
 
     return ani
 
@@ -745,8 +815,8 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
 n = int(length*scalef)
-streamfun = calcStreamFun(80)
-u, v = getFluidVel(streamfun, 80, 30)
+streamfun = calcStreamFun(60)
+u, v = getFluidVel(streamfun, 60, 60)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 num_parts = 6
@@ -759,19 +829,20 @@ num_parts = 6
 
 # pos0 = [24, 24.71211, 0, 0, 22.785, 30.0, 0, 0, 24, 35.28789, 0, 0, 22, 27, 0, 0]
 # pos0 = [33,12,0,0,32.523,15,0,0,33,18,0,0]#,32,13.5,0,0]
-pos0 =[30,13,0,0,30,17,0,0,27,12,0,0,27,18,0,0,27,15,0,0,25,14,0,0]
+# pos0 =[30,13,0,0,30,17,0,0,27,12,0,0,27,18,0,0,27,15,0,0,25,14,0,0]
 # pos0 = pos0 + [18, 23, 0, 0]
 # pos0 = pos0 + [18, 27, 0, 0]
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
-# pos0 = pos0 + [18, 39, 0, 0]
+# pos0 = pos0 + [18, 39, 0,
+pos0 = [18, 20, 0,0, 18,40,0,0]
 
-r = 1
-trajectory, energy, forces, t, der = runSim(num_parts, r, 0.1, 250, pos0, u, v)
+r = 9
+trajectory, energy, forces, t, der = runSim(2, r, 0.1, 50, pos0, u, v)
 
 ani = generateAnim(trajectory, r, n)
 plt.show()
-ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
+# ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
 
 #===Testing: adding/removing particles===
 
