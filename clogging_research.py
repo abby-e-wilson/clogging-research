@@ -36,7 +36,7 @@ import argparse
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
 len_m = 600
-len_c = 300
+len_c = 60
 length = 600
 scalef = 1/10
 slope = (len_m-len_c)/length
@@ -50,6 +50,7 @@ E = 10 ** 6  #start with super soft spheres
 poisson = 0.3
 alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
+density = 997 #kg/m^3, for water
 maxV = .2 #max fluid velocity
 
 #===Nondimentionalization Constants===
@@ -176,10 +177,10 @@ def plotStreamFun(streamfun, n) :
 
 
 n = int(length*scalef)
-streamfun = calcStreamFun(80)
+streamfun = calcStreamFun(60)
 #
-# plotStreamFunVals(n)
-# plotStreamFun(streamfun, n)
+plotStreamFunVals(n)
+plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
 
@@ -242,6 +243,11 @@ def plotFluidVel(streamfun, nx, ny):
     u, v = getFluidVel(streamfun, nx, ny)
     u_graph, v_graph = getFluidVelGraphic(streamfun, nx, ny)
 
+    mag = np.zeros((nx,ny))
+    for i in range(nx):
+        for j in range(ny):
+            mag[i][j] = math.sqrt(u_graph[i][j]**2 + v_graph[i][j]**2)
+
     plt.pcolor(v_graph)
     plt.colorbar()
     plt.title("Velocity in y direction")
@@ -252,6 +258,13 @@ def plotFluidVel(streamfun, nx, ny):
     plt.pcolor(u_graph)
     plt.colorbar()
     plt.title("Velocity in x direction")
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    plt.show()
+
+    plt.pcolor(mag)
+    plt.colorbar()
+    plt.title("Velocity magnitude")
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.show()
@@ -275,7 +288,8 @@ def plotFluidVel(streamfun, nx, ny):
     plt.title("Velocity of fluid flow in x dir at different y values")
     plt.show()
 
-# plotFluidVel(streamfun, 80,30)
+# streamfun = calcStreamFun(60)
+# plotFluidVel(streamfun, 60,60)
 
 #
 # # Calculate the velocity for any point in the field by averaging values from the velocity grid
@@ -451,7 +465,7 @@ def calcCollisionAd(R, xi, yi, xj, yj):
     #     print(d, Fy)
     #
 
-    gamma = .0001
+    gamma = 1 #30*10**(-3)
     Eeff = E/2/(1-poisson**2)
     Fc = 3*math.pi*R*gamma
     a0 = (9*math.pi*R**2*gamma/E)**(1/3)
@@ -459,13 +473,13 @@ def calcCollisionAd(R, xi, yi, xj, yj):
 
     Reff = R/2 # 1/Reff = 1/R1 + 1/R2 but R1=R2 here
     deformation = (2*R - distance)/2
+    print(deformation, a0, deformation)
     a = math.sqrt(Reff * deformation)
 
     Fn = 4*Fc *((a/a0)**3-(a/a0)**(3/2))
 
-    Fx = Fn * unit[0]
-    Fy = Fn * unit[1]
-
+    Fx = Fn * unit[0]/1000
+    Fy = Fn * unit[1]/1000
     Vij = 1
     return Fx, Fy, Vij
 
@@ -474,7 +488,7 @@ def plotColForceAd():
     R = 2
     xi=0
     yi=0
-    xj= np.linspace(4, 3.9,100)
+    xj= np.linspace(4, 2,100)
     yj=0
 
     overlap = 2- xj
@@ -487,7 +501,7 @@ def plotColForceAd():
         d.append(v)
 
     plt.plot(overlap, f)
-    plt.ylim(-100,100)
+    # plt.ylim(-100,100)
     plt.show()
 
 # plotColForceAd()
@@ -815,8 +829,8 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
 n = int(length*scalef)
-streamfun = calcStreamFun(60)
-u, v = getFluidVel(streamfun, 60, 60)
+streamfun = calcStreamFun(80)
+u, v = getFluidVel(streamfun, 80, 50)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 num_parts = 6
@@ -835,13 +849,13 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [18, 20, 0,0, 18,40,0,0]
+pos0 = [10, 20, 0,0, 10,30,0,0]
 
-r = 9
-trajectory, energy, forces, t, der = runSim(2, r, 0.1, 50, pos0, u, v)
-
-ani = generateAnim(trajectory, r, n)
-plt.show()
+r = 4.5
+# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 500, pos0, u, v)
+#
+# ani = generateAnim(trajectory, r, n)
+# plt.show()
 # ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
 
 #===Testing: adding/removing particles===
