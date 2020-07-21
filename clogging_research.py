@@ -36,7 +36,7 @@ import argparse
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
 len_m = 600
-len_c = 60
+len_c = 120
 length = 600
 scalef = 1/10
 slope = (len_m-len_c)/length
@@ -176,11 +176,11 @@ def plotStreamFun(streamfun, n) :
 
 
 
-n = int(length*scalef)
-streamfun = calcStreamFun(60)
-#
-plotStreamFunVals(n)
-plotStreamFun(streamfun, n)
+# n = int(length*scalef)
+# streamfun = calcStreamFun(60)
+# #
+# plotStreamFunVals(n)
+# plotStreamFun(streamfun, n)
 
 # Define the x and y derivatives of the streamfunction
 
@@ -426,7 +426,7 @@ def unitVec(v):
 def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
-    rij = (xi-xj, yi-yj)
+    rij = [xi-xj, yi-yj]
     unit = unitVec(rij)
 
     #calculate potential
@@ -434,6 +434,19 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
     dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
+
+    vel = [vxi, vyi]
+
+    velnorm = np.sqrt(sum([i**2 for i in rij]))
+    rij = np.array(rij)
+    print(rij)
+    proj_v_on_r = rij * float(np.dot(vel, rij)/velnorm**2)
+    v_perp = vel-proj_v_on_r
+
+    f = 0.2
+    friction = -f*v_perp
+    Fx += friction[0]
+    Fy += friction[1]
 
     return Fx, Fy, Vij
 
@@ -620,7 +633,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollisionAd(R, x, y, xj, yj)
+                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -779,7 +792,7 @@ def generateAnim(y, r, n):
     X = np.linspace(0, xmax, int(length*scalef))
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
-    streamfun = calcStreamFun(80)
+    streamfun = calcStreamFun(60)
     u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
@@ -829,8 +842,8 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
 n = int(length*scalef)
-streamfun = calcStreamFun(80)
-u, v = getFluidVel(streamfun, 80, 50)
+streamfun = calcStreamFun(60)
+u, v = getFluidVel(streamfun, 60, 60)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 num_parts = 6
@@ -849,13 +862,14 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [10, 20, 0,0, 10,30,0,0]
+# pos0 = [10, 20, 0,0, 10,30,0,0]
+pos0 = [15,20,0,0,15,40,0,0]
 
 r = 4.5
-# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 500, pos0, u, v)
-#
-# ani = generateAnim(trajectory, r, n)
-# plt.show()
+trajectory, energy, forces, t, der = runSim(2, r, 0.1, 600, pos0, u, v)
+
+ani = generateAnim(trajectory, r, n)
+plt.show()
 # ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
 
 #===Testing: adding/removing particles===
