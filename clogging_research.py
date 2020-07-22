@@ -36,9 +36,9 @@ import argparse
 # len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-len_m = 600
-len_c = 200
-length = 600
+len_m = 300
+len_c = 150
+length = 300
 scalef = 1/10
 slope = (len_m-len_c)/length
 
@@ -210,38 +210,45 @@ ENERGY_PATH = "_energy.txt"
 #y - step in y dir
 #returns - nxn coefficient matrix
 def streamfuncCoeffsMatrix(n, x, y):
-    coeffs = np.zeros((n**2,n**2))
+    coeffs = np.zeros((2*n**2,2*n**2))
 
-    for j in range(n):
-            coeffs[j][j] = 1
-            coeffs[(n-1)**2+j][(n-1)**2+j] = 1
-
-    #calculate the slope of the walls
-    slope = (len_m - len_c)/length
-
+    #u - x dir
     for i in range(n):
         for j in range(n):
+            #bd conditions
             if (j==0 or j==n-1):
                 coeffs[i*n+j][i*n+j] = 1
             elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
                 coeffs[i*n+j][i*n+j] = 1
             elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
                 coeffs[i*n+j][i*n+j] = 1
+            #body
             else:
-                # coeffs[i*n+j][i*n + (j-1)] = x**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][i*n + (j+1)] = x**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][((i-1)%n)*n + j] = y**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][((i+1)%n)*n + j] = y**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][i*n + j] = -1
-                # if (i+1 >= n):
-                    # coeffs[i*n+j][(-1)*n + j] = 1/y**2
-                # else:
                 coeffs[i*n+j][((i+1)%n)*n + j] = 1/y**2
-
                 coeffs[i*n+j][i*n + (j+1)] = 1/x**2
                 coeffs[i*n+j][i*n + (j-1)] = 1/x**2
                 coeffs[i*n+j][((i-1)%n)*n + j] = 1/y**2
                 coeffs[i*n+j][i*n + j] = -2/x**2-2/y**2
+
+    # v - y dir
+    for i in range(1,n):
+        for j in range(n):
+            #bd conditions
+            if (j==0 or j==n-1):
+                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
+            elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
+                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
+            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
+                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
+            #body
+            else:
+                #du/dx
+                coeffs[n**2+i*n+j][n**2+((i+1)%n)*n + j] = 1/2/x
+                print(i, j, (i-1)%n, (i-1)%n+n, ((i-1)%n+n)*n)
+                coeffs[n**2+i*n+j][n**2+((i-1)%n)*n + j] = -1/2/x
+                #dv/dy
+                coeffs[n**2+i*n+j][n**2+i*n + (j+1)] = 1/2/y
+                coeffs[n**2+i*n+j][n**2+i*n + (j-1)] = -1/2/y
 
     return coeffs
 
@@ -305,29 +312,12 @@ def getStreamFuncVals(n):
     slope = (len_m - len_c)/length
 
     #create matrix with values the stream fn should equal
-    vals = np.zeros((n**2))
+    vals = np.zeros((2*n**2))
 
-    # y = np.linspace(-30,30,60)
-    # vel = maxV * (1- (y/30)**2)
-    # psi = 2*maxV*(y-1/3*(y/30)**3)
-    # psi_dist = [(float(i)/max(psi)+1)/2 for i in psi]
+    delp = -350
+    dp = delp/n
 
-    l = length*scalef
-    x = np.linspace(0, 59, 60)
-    a = abs(l/2-x) + len_c*scalef
-    # plt.plot(a)
-    # plt.title("constriction")
-    # plt.show()
-    dp = -100
-    p0 = 100
-    pf = 0
-    q = 0
-    p = p0 - q**2/2*(60**2-a**2)/60**2/a**2+ x*dp/l
-    dp = [(p[i+1]-p[i-1])/2 for i in range(1,59)]
-    dp = [dp[0]] + dp + [dp[-1]]
-    test = [-1 * (-abs(30 - i)/30 + 1) for i in range(60)]
-    plt.plot(test)
-    plt.show()
+    mu =0.0022
 
     for i in range(n):
         for j in range(n):
@@ -336,7 +326,8 @@ def getStreamFuncVals(n):
             elif (j<=(slope*i) and j<=(len_m*scalef-len_c*scalef-slope*i)):
                 vals[i*n+j] = 0
             elif (j!= 0 and j!= n-1):
-                vals[i*n+j] = -1 * (-abs(30 - i)/30 + 1)
+                vals[i*n+j] = dp*mu
+                # vals[i*n+j] = -1 * (-abs(30 - i)/30 + 1)
                 # vals[i*n+j] = dp[i]
                 # if (i != 0 and i != n-1):
                 #     vals[i*n+j] = (p[i+1]-p[i-1])/2
@@ -348,12 +339,31 @@ def getStreamFuncVals(n):
             # if (i==0 or i==(n-1)):
             #     vals[i*n+j] = psi_dist[j]
 
-    for j in range(n):
-        vals[j*n+n-1] = 0
-        vals[j*n] = 0
-
-
     return vals
+
+
+# # y = np.linspace(-30,30,60)
+# # vel = maxV * (1- (y/30)**2)
+# # psi = 2*maxV*(y-1/3*(y/30)**3)
+# # psi_dist = [(float(i)/max(psi)+1)/2 for i in psi]
+#
+# l = length*scalef
+# x = np.linspace(0, 59, 60)
+# a = abs(l/2-x) + len_c*scalef
+# # plt.plot(a)
+# # plt.title("constriction")
+# # plt.show()
+# p0 = 350
+# mu = 0.0022
+# pf = 0
+# dp = (pf-p0)/n
+# # q = 0
+# # p = p0 - q**2/2*(60**2-a**2)/60**2/a**2+ x*dp/l
+# # dp = [(p[i+1]-p[i-1])/2 for i in range(1,59)]
+# # dp = [dp[0]] + dp + [dp[-1]]
+# # test = [-1 * (-abs(30 - i)/30 + 1) for i in range(60)]
+# # plt.plot(test)
+# plt.show()
 
 
 # Plot the boundary conditions of the stream function
@@ -362,10 +372,12 @@ def plotStreamFunVals(n):
     vals = getStreamFuncVals(n)
 
     #convert vals to a square matrix for visualization
-    vals_sq = np.zeros((n,n))
+    vals_sq = np.zeros((2*n,2*n))
     for i in range(n):
         for j in range(n):
+            print(i,j)
             vals_sq[i][j] = vals[j*n+i]
+            vals_sq[i+n][j+n] = vals[n**2+j*n+i]
 
     plt.pcolor(vals_sq)
     plt.colorbar()
@@ -376,36 +388,43 @@ def calcStreamFun(n):
     # n = int(len_m*scalef)
 
     #calculate streamfunction
+    print("getting coeffs...")
     coeffs = streamfuncCoeffsMatrix(n,1,1)
+    print("got coeffs...")
     vals = getStreamFuncVals(n)
 
-    func = linalg.solve(coeffs, vals)
+    print(len(coeffs[0:n,0:n]))
+    func, resid, rank, s = linalg.lstsq(coeffs, vals)
 
-    stream = np.zeros((n,n))
+    print(len(func), func[0])
+
+    stream = np.zeros((2*n,2*n))
     for i in range(n):
         for j in range(n):
+            print(i,j)
             stream[i][j] = func[i*n+j]
+            stream[n+i][n+j] = func[n**2+ i*n+j]
 
     return stream
 
 def plotStreamFun(streamfun, n) :
-    streamfun_graph = np.zeros((n,n))
+    streamfun_graph = np.zeros((2*n,2*n))
 
     xval = np.linspace(0,60,60)
-    crosssection=[]
-    for i in range(n):
-        crosssection.append(streamfun[15][i]/15)
-        for j in range(n):
+    # crosssection=[]
+    for i in range(2*n):
+        # crosssection.append(streamfun[15][i]/15)
+        for j in range(2*n):
             streamfun_graph[i][j] = streamfun[j][i]
 
     # plt.pcolor(stream, vmin = -1, vmax = 1)
     plt.pcolor(streamfun_graph)
 
-    xmax = length* scalef
-    ymax = len_m*scalef
-    plt.plot(crosssection, xval, color="white" )
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    # xmax = length* scalef
+    # ymax = len_m*scalef
+    # plt.plot(crosssection, xval, color="white" )
+    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamfunction")
     plt.colorbar()
@@ -477,10 +496,10 @@ def plotStreamFunWProf(streamfun, n) :
     plt.show()
 
 n = int(length*scalef)
-streamfun = calcStreamFun(60)
 # #
-plotStreamFunVals(n)
-plotStreamFun(streamfun, n)
+plotStreamFunVals(30)
+streamfun = calcStreamFun(30)
+plotStreamFun(streamfun, 30)
 
 
 def getFluidVelGraphic(streamfun, nx, ny):
