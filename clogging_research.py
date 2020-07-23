@@ -1,14 +1,8 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Modeling: The Clogging Problem
-
-# ## Problem setup
+#Modeling: The Clogging Problem
+#Abby Wilson
+#Summer 2020
 
 # Imports
-
-# In[1]:
-
 import math
 import random
 import numpy as np
@@ -22,23 +16,20 @@ import matplotlib.cm as cm
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
 
-import pickle
 import os
+import pickle
 import argparse
 
-
 # Constants
-
-# In[2]:
 
 #===Pipe system===
 # len_m = 300 * 10 **(-6) #radius of pipe at mouth (m) microns
 # len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-len_m = 300
+len_m = 600
 len_c = 150
-length = 300
+length = 600
 scalef = 1/10
 slope = (len_m-len_c)/length
 
@@ -61,309 +52,91 @@ t0 = mass/beta
 
 #===File OD consts===
 PATH = "/home/aw/Documents/Clogging/clogging-research/outputs/"
+PATH_IN = "/home/aw/Documents/Clogging/clogging-research/inputs/"
 TRAJ_PATH = "_trajectory.txt"
 OVERVIEW_PATH = "_overview.txt"
 TIME_PATH = "_time.txt"
 ENERGY_PATH = "_energy.txt"
+STREAM = "_stream.txt"
 
-
-#=========STREAMFUN TESTING==========================================
-
-#Testing code from: https://www.codeproject.com/Articles/1087025/Using-Python-to-Solve-Computational-Physics-Proble
-# Simple Numerical Laplace Equation Solution using Finite Difference Method
-# import numpy as np
-# import matplotlib.pyplot as plt
-#
-# # Set maximum iteration
-# maxIter = 10
-#
-# # Set Dimension and delta
-# lenX = lenY = 40 #we set it rectangular
-# delta = 1
-#
-# # Boundary condition
-# Ttop = 1
-# Tbottom = 0
-# Tleft = 0
-# Tright = 0
-#
-# # Initial guess of interior grid
-# Tguess = 0.5
-#
-# # Set colour interpolation and colour map
-# colorinterpolation = 50
-# colourMap = plt.cm.jet #you can try: colourMap = plt.cm.coolwarm
-#
-# # Set meshgrid
-# X, Y = np.meshgrid(np.arange(0, lenX), np.arange(0, lenY))
-#
-# # Set array size and set the interior value with Tguess
-# T = np.empty((lenX, lenY))
-# T.fill(Tguess)
-#
-# y = np.linspace(-20,20,40)
-# vel = maxV * (1- (y/20)**2)
-# psi = 2*maxV*(y-1/3*(y/20)**3)
-# psi_dist = [(float(i)/max(psi)+1)/2 for i in psi]
-#
-# # Iteration (We assume that the iteration is convergence in maxIter = 500)
-# print("Please wait for a moment")
-# for iteration in range(0, maxIter):
-#     # Set Boundary condition
-#     T[(lenY-1):, :] = Ttop
-#     T[:1, :] = Tbottom
-#     for i in range(lenY):
-#         T[i][0] = psi_dist[i]
-#         T[i][lenX-1] = psi_dist[i]
-#
-#     # T[:, (lenX-1):] = Tright
-#     # T[:, :1] = Tleft
-#         # for i in range(n):
-#         #     for j in range(n):
-#         #         if (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
-#         #             vals[i*n+j] = 1
-#         #
-#         #         #Edge bd:
-#         #         if (i==0 or i==(n-1)):
-#         #             vals[i*n+j] = psi_dist[j]
-#
-#     for i in range(1, lenX-1, delta):
-#         for j in range(1, lenY-1, delta):
-#             T[i, j] = 0.25 * (T[i+1][j] + T[i-1][j] + T[i][j+1] + T[i][j-1])
-#     # for i in range(1, lenY-1):
-#     #     T[i, 0] = 1/3 * (T[i+1, 0] + T[i-1, 0] + T[i, 1])
-#     #     T[i, lenX-1] = 1/3 * (T[i+1, lenX-1] + T[i-1, lenX-1] + T[i, lenX-2])
-#
-# T[(lenY-1):, :] = Ttop
-# T[:1, :] = Tbottom
-# for i in range(lenY):
-#     T[i][0] = psi_dist[i]
-#     T[i][lenX-1] = psi_dist[i]
-# print("Iteration finished")
-# print(T)
-# # Configure the contour
-# plt.title("Contour of Temperature")
-# plt.contourf(X, Y, T, colorinterpolation, cmap=colourMap)
-#
-# # Set Colorbar
-# x=np.linspace(0,1,10)
-# plt.colorbar(ticks=x)
-#
-# # Show the result in the plot window
-# plt.show()
-#
-# def dPsi_dy(psi, dx, i, j):
-#     return (psi[i+1][j]-psi[i-1][j])/2/dx
-#
-# def dPsi_dx(psi, dy, i, j):
-#     return (psi[i][j+1]-psi[i][j-1])/2/dy
-#
-#
-# def getFluidVel(streamfun, nx, ny):
-#     u = np.zeros((nx,ny))
-#     v = np.zeros((nx,ny))
-#     maxval = 0
-#
-#     for i in range(1,nx-1):
-#         for j in range(1,ny-1):
-#             u[i][j] = dPsi_dy(streamfun, .1, i, j)
-#             v[i][j] = -dPsi_dx(streamfun, .1, i, j)
-#             mag = math.sqrt(u[i][j]**2+v[i][j]**2)
-#             if mag > maxval : maxval = mag
-#     u = u/maxval * maxV
-#     v = v/maxval * maxV
-#     print(maxval, maxV)
-#     return u, v
-#
-# u, v = getFluidVel(T, lenX, lenY)
-#
-# # mag = np.zeros((nx,ny))
-# # for i in range(nx):
-# #     for j in range(ny):
-# #         mag[i][j] = math.sqrt(u_graph[i][j]**2 + v_graph[i][j]**2)
-#
-# plt.pcolor(v)
-# plt.colorbar()
-# plt.title("Velocity in y direction")
-# plt.gca().set_aspect('equal', adjustable='box')
-# plt.grid(b=True, which='major', color='#666666', linestyle='-')
-# plt.show()
-#
-# plt.pcolor(u)
-# plt.colorbar()
-# plt.title("Velocity in x direction")
-# plt.gca().set_aspect('equal', adjustable='box')
-# plt.grid(b=True, which='major', color='#666666', linestyle='-')
-# plt.show()
-#
-#
-# #=========STREAMFUN TESTING==========================================
-# ### Define the Streamfunction
+#=== Define the Streamfunction ===
 
 # Create the coefficient matrix to solve for the stream function
 
-# In[3]:
-
 #Parameters
 #n - size of the matrix
 #x - step in x dir
 #y - step in y dir
 #returns - nxn coefficient matrix
-def streamfuncCoeffsMatrix(n, x, y):
-    coeffs = np.zeros((2*n**2,2*n**2))
-
-    #u - x dir
-    for i in range(n):
-        for j in range(n):
-            #bd conditions
-            if (j==0 or j==n-1):
-                coeffs[i*n+j][i*n+j] = 1
-            elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
-                coeffs[i*n+j][i*n+j] = 1
-            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
-                coeffs[i*n+j][i*n+j] = 1
-            #body
-            else:
-                coeffs[i*n+j][((i+1)%n)*n + j] = 1/y**2
-                coeffs[i*n+j][i*n + (j+1)] = 1/x**2
-                coeffs[i*n+j][i*n + (j-1)] = 1/x**2
-                coeffs[i*n+j][((i-1)%n)*n + j] = 1/y**2
-                coeffs[i*n+j][i*n + j] = -2/x**2-2/y**2
-
-    # v - y dir
-    for i in range(1,n):
-        for j in range(n):
-            #bd conditions
-            if (j==0 or j==n-1):
-                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
-            elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
-                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
-            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
-                coeffs[n**2+i*n+j][n**2+i*n+j] = 1
-            #body
-            else:
-                #du/dx
-                coeffs[n**2+i*n+j][n**2+((i+1)%n)*n + j] = 1/2/x
-                print(i, j, (i-1)%n, (i-1)%n+n, ((i-1)%n+n)*n)
-                coeffs[n**2+i*n+j][n**2+((i-1)%n)*n + j] = -1/2/x
-                #dv/dy
-                coeffs[n**2+i*n+j][n**2+i*n + (j+1)] = 1/2/y
-                coeffs[n**2+i*n+j][n**2+i*n + (j-1)] = -1/2/y
-
-    return coeffs
-
-#Parameters
-#n - size of the matrix
-#x - step in x dir
-#y - step in y dir
-#returns - nxn coefficient matrix
-def streamfuncCoeffsMatrix3rd(n, x, y):
+def streamfuncCoeffsMatrixBiharmonic(n, x, y):
     coeffs = np.zeros((n**2,n**2))
 
-    # for j in range(n):
-            # coeffs[j][j] = 1
-            # coeffs[(n-1)**2+j][(n-1)**2+j] = 1
-
-    #calculate the slope of the walls
-    slope = (len_m - len_c)/length
-
     for i in range(n):
         for j in range(n):
+
+            #BD Conditions (set velocity values)
             if (j==0 or j==n-1):
                 coeffs[i*n+j][i*n+j] = 1
-            # elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
-            #     coeffs[i*n+j][i*n+j] = 1
-            # elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
-            #     coeffs[i*n+j][i*n+j] = 1
+            elif (i<n/2 and (j<=slope*i or j>=(len_m*scalef-slope*i))):
+                coeffs[i*n+j][i*n+j] = 1
+            elif (i>=n/2 and (j>=(slope*i+len_c*scalef) or j<=(len_m*scalef-len_c*scalef-slope*i))):
+                coeffs[i*n+j][i*n+j] = 1
+
+            #Body Conditions
             else:
-                # coeffs[i*n+j][i*n + (j-1)] = x**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][i*n + (j+1)] = x**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][((i-1)%n)*n + j] = y**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][((i+1)%n)*n + j] = y**2/2/(x**2 + y**2)
-                # coeffs[i*n+j][i*n + j] = -1
+                #Finite difference method for biharmonic equation
+
                 if (j+2 < n):
-                    coeffs[i*n+j][i*n + j+2] = 1/2/y**2
-                if (j-2 >= 0):
-                    coeffs[i*n+j][i*n + j-2] = -1/2/y**2
-                # coeffs[i*n+j][((i+1)%n)*n + j] = 1/y**2
-                coeffs[i*n+j][i*n + (j+1)] = -1/y**2
-                coeffs[i*n+j][i*n + (j-1)] = 1/y**2
+                    coeffs[i*n+j][i*n + (j+2)] = 1/y**4
+                    coeffs[i*n+j][i*n + (j+1)] = -2/x**2/y**2 - 4/y**4
+                else:
+                    #if off the edge, compensate by swapping j+2 with j+1, as the bd should have constant value
+                    coeffs[i*n+j][i*n + (j+1)] = -2/x**2/y**2 - 4/y**4 + 1/y**4
+                if (j-2 >= 0 ):
+                    coeffs[i*n+j][i*n + (j-2)] = 1/y**4
+                    coeffs[i*n+j][i*n + (j-1)] = -2/x**2/y**2 - 4/y**4
+                else:
+                    #if off the edge, compensate by swapping j+2 with j+1, as the bd should have constant value
+                    coeffs[i*n+j][i*n + (j-1)] = -2/x**2/y**2 - 4/y**4 + 1/y**4
 
-                # coeffs[i*n+j][((i+2)%n)*n + j] = 1/2/x**2
-                # coeffs[i*n+j][((i-2)%n)*n + j] = -1/2/x**2
-                # # coeffs[i*n+j][((i+1)%n)*n + j] = 1/y**2
-                # coeffs[i*n+j][((i+1)%n)*n + j] = -1/x**2
-                # coeffs[i*n+j][((i-1)%n)*n + j] = 1/x**2
+                coeffs[i*n+j][((i+2)%n)*n + j] = 1/x**4
+                coeffs[i*n+j][((i-2)%n)*n + j] = 1/x**4
 
-                # coeffs[i*n+j][((i-1)%n)*n + j] = 1/y**2
-                # coeffs[i*n+j][i*n + j] = -2/x**2-2/y**2
+                coeffs[i*n+j][((i+1)%n)*n + (j+1)] = 1/x**2/y**2
+                coeffs[i*n+j][((i-1)%n)*n + (j+1)] = 1/x**2/y**2
+                coeffs[i*n+j][((i+1)%n)*n + (j-1)] = 1/x**2/y**2
+                coeffs[i*n+j][((i-1)%n)*n + (j-1)] = 1/x**2/y**2
+
+                coeffs[i*n+j][((i+1)%n)*n + j] = -2/x**2/y**2 - 4/x**4
+                coeffs[i*n+j][((i-1)%n)*n + j] = -2/x**2/y**2 - 4/x**4
+
+                coeffs[i*n+j][i*n + j] = 4/x**2/y**2 + 6/x**4 + 6/y**4
 
     return coeffs
 
-
-# calculate the boundary conditions for the streamfunction
+#Calculate the boundary conditions for the streamfunction
 
 #Parameters
 #n - size of the matrix
 #returns - 1d array with boundary conditions for the stream function
 def getStreamFuncVals(n):
 
-    #calculate the slope of the walls
-    slope = (len_m - len_c)/length
-
     #create matrix with values the stream fn should equal
-    vals = np.zeros((2*n**2))
-
-    delp = -350
-    dp = delp/n
-
-    mu =0.0022
+    vals = np.zeros((n**2))
 
     for i in range(n):
         for j in range(n):
-            if (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
-                vals[i*n+j] = 0
+            if (j == n-1 or j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
+                #upper bd
+                vals[i*n+j] = 1
             elif (j<=(slope*i) and j<=(len_m*scalef-len_c*scalef-slope*i)):
+                #lower bd
                 vals[i*n+j] = 0
             elif (j!= 0 and j!= n-1):
-                vals[i*n+j] = dp*mu
-                # vals[i*n+j] = -1 * (-abs(30 - i)/30 + 1)
-                # vals[i*n+j] = dp[i]
-                # if (i != 0 and i != n-1):
-                #     vals[i*n+j] = (p[i+1]-p[i-1])/2
-                # else:
-                #     vals[i*n+j] = 0
-                # vals[i*n+j] = -1
-
-            # #Edge bd:
-            # if (i==0 or i==(n-1)):
-            #     vals[i*n+j] = psi_dist[j]
+                #body
+                vals[i*n+j] = 0
 
     return vals
-
-
-# # y = np.linspace(-30,30,60)
-# # vel = maxV * (1- (y/30)**2)
-# # psi = 2*maxV*(y-1/3*(y/30)**3)
-# # psi_dist = [(float(i)/max(psi)+1)/2 for i in psi]
-#
-# l = length*scalef
-# x = np.linspace(0, 59, 60)
-# a = abs(l/2-x) + len_c*scalef
-# # plt.plot(a)
-# # plt.title("constriction")
-# # plt.show()
-# p0 = 350
-# mu = 0.0022
-# pf = 0
-# dp = (pf-p0)/n
-# # q = 0
-# # p = p0 - q**2/2*(60**2-a**2)/60**2/a**2+ x*dp/l
-# # dp = [(p[i+1]-p[i-1])/2 for i in range(1,59)]
-# # dp = [dp[0]] + dp + [dp[-1]]
-# # test = [-1 * (-abs(30 - i)/30 + 1) for i in range(60)]
-# # plt.plot(test)
-# plt.show()
 
 
 # Plot the boundary conditions of the stream function
@@ -372,62 +145,53 @@ def plotStreamFunVals(n):
     vals = getStreamFuncVals(n)
 
     #convert vals to a square matrix for visualization
-    vals_sq = np.zeros((2*n,2*n))
+    vals_sq = np.zeros((n,n))
     for i in range(n):
         for j in range(n):
             print(i,j)
             vals_sq[i][j] = vals[j*n+i]
-            vals_sq[i+n][j+n] = vals[n**2+j*n+i]
 
     plt.pcolor(vals_sq)
     plt.colorbar()
     plt.show()
+
 
 # Calculate the streamfunction
 def calcStreamFun(n):
     # n = int(len_m*scalef)
 
     #calculate streamfunction
-    print("getting coeffs...")
-    coeffs = streamfuncCoeffsMatrix(n,1,1)
-    print("got coeffs...")
+    coeffs = streamfuncCoeffsMatrixBiharmonic(n,1,1)
     vals = getStreamFuncVals(n)
 
-    print(len(coeffs[0:n,0:n]))
-    func, resid, rank, s = linalg.lstsq(coeffs, vals)
+    func = linalg.solve(coeffs, vals)
 
-    print(len(func), func[0])
-
-    stream = np.zeros((2*n,2*n))
+    stream = np.zeros((n,n))
     for i in range(n):
         for j in range(n):
-            print(i,j)
             stream[i][j] = func[i*n+j]
-            stream[n+i][n+j] = func[n**2+ i*n+j]
 
     return stream
 
 def plotStreamFun(streamfun, n) :
-    streamfun_graph = np.zeros((2*n,2*n))
+    streamfun_graph = np.zeros((n,n))
 
-    xval = np.linspace(0,60,60)
-    # crosssection=[]
-    for i in range(2*n):
-        # crosssection.append(streamfun[15][i]/15)
-        for j in range(2*n):
+    for i in range(n):
+        for j in range(n):
             streamfun_graph[i][j] = streamfun[j][i]
 
-    # plt.pcolor(stream, vmin = -1, vmax = 1)
     plt.pcolor(streamfun_graph)
 
-    # xmax = length* scalef
-    # ymax = len_m*scalef
-    # plt.plot(crosssection, xval, color="white" )
-    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    xmax = length* scalef
+    ymax = len_m*scalef
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamfunction")
     plt.colorbar()
+    plt.xlabel("<--- length --->")
+    plt.ylabel("<--- Pipe Inlet --->")
+    # plt.savefig("streamfun_corr.png")
     plt.show()
 
 # Define the x and y derivatives of the streamfunction
@@ -469,6 +233,25 @@ def getFluidVel(streamfun, nx, ny):
     print(maxval, maxV)
     return u, v
 
+def writeVelocity(streamfun):
+
+    try:
+        os.mkdir(PATH_IN)
+    except OSError:
+        print ("failed to create directory %s" % PATH_IN)
+    else:
+        print ("created directory %s " % PATH_IN)
+
+    with open(PATH_IN + STREAM, 'wb') as f:
+        pickle.dump(streamfun, f)
+
+def readVelocity():
+
+    with open(PATH_IN  + STREAM, 'rb') as f:
+        streamfun = pickle.load(f)
+
+    return streamfun
+
 
 def plotStreamFunWProf(streamfun, n) :
     streamfun_graph = np.zeros((n,n))
@@ -477,11 +260,7 @@ def plotStreamFunWProf(streamfun, n) :
         for j in range(n):
             streamfun_graph[i][j] = streamfun[j][i]
 
-    # u, v = getFluidVel(streamfun, n, n)
-    # x = np.linspace(0,59,60)
-    # vels = [u[i][25]*100 for i in range(60)]
-
-    bounds = np.linspace(np.amin(streamfun), np.amax(streamfun), 20)
+    bounds = np.linspace(np.amin(streamfun), np.amax(streamfun), 10)
     norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
     plt.pcolormesh(streamfun_graph, norm=norm)
 
@@ -491,16 +270,20 @@ def plotStreamFunWProf(streamfun, n) :
     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamfunction")
+    plt.xlabel("<--- length --->")
+    plt.ylabel("<--- Pipe Inlet --->")
     plt.colorbar()
     # plt.plot(vels, x, color="white")
+
+    # plt.savefig("streamfun_corr_cont.png")
     plt.show()
 
-n = int(length*scalef)
-# #
-plotStreamFunVals(30)
-streamfun = calcStreamFun(30)
-plotStreamFun(streamfun, 30)
-
+# n = int(length*scalef)
+# # #
+# plotStreamFunVals(60)
+# streamfun = calcStreamFun(60)
+# plotStreamFun(streamfun, 60)
+# writeVelocity(streamfun)
 
 def getFluidVelGraphic(streamfun, nx, ny):
     #pcolor graphs seem to plot the x values on the vertical axis so I manualy flipped these for visualization purposes
@@ -519,6 +302,7 @@ def getFluidVelGraphic(streamfun, nx, ny):
 
     return u_graph, v_graph
 
+
 def plotFluidVel(streamfun, nx, ny):
 
     u, v = getFluidVel(streamfun, nx, ny)
@@ -533,21 +317,28 @@ def plotFluidVel(streamfun, nx, ny):
     plt.colorbar()
     plt.title("Velocity in y direction")
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    # plt.grid(b=True, which='major', color='#666666', linestyle='-')
+
+    plt.xlabel("<--- length --->")
+    plt.ylabel("<--- Pipe Inlet --->")
+    # plt.savefig("streamfun_corr_y.png")
     plt.show()
 
     plt.pcolor(u_graph)
     plt.colorbar()
     plt.title("Velocity in x direction")
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    # plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    plt.xlabel("<--- length --->")
+    plt.ylabel("<--- Pipe Inlet --->")
+    # plt.savefig("streamfun_corr_x.png")
     plt.show()
 
     plt.pcolor(mag)
     plt.colorbar()
     plt.title("Velocity magnitude")
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    # plt.grid(b=True, which='major', color='#666666', linestyle='-')
     plt.show()
 
     for j in range(5):
@@ -560,18 +351,24 @@ def plotFluidVel(streamfun, nx, ny):
     plt.show()
 
 
-    for j in range(6):
-        vels = [u[25+j*1][i] for i in range(nx)]
-        label = (25+j*1)
+    for j in range(12):
+        vels = [u[10+j*3][i] for i in range(nx)]
+        label = "x=" + str(10+j*3)
         plt.plot(vels, label=label)
 
+    print("average: " + str(np.average(vels)))
     plt.legend()
     plt.title("Velocity of fluid flow in x dir at different x values")
+    plt.xlabel("Velocity profile along pipe cross section")
+    plt.ylabel("Velocity (m/s)")
+    plt.savefig("streamfun_corr_velprof.png")
     plt.show()
 
-# streamfun = calcStreamFun(60)
+streamfun = calcStreamFun(60)
 # plotFluidVel(streamfun, 60,60)
 
+# streamfun = readVelocity()
+# plotFluidVel(streamfun, int(length*scalef), int(len_m*scalef))
 #
 # # Calculate the velocity for any point in the field by averaging values from the velocity grid
 
@@ -663,24 +460,28 @@ def plotVelFun(u, v):
 def plotVelocityField(u, v, nx, ny):
     X = np.zeros((nx, ny))
     Y = np.zeros((nx, ny))
+    U = np.zeros((nx, ny))
 
     for i in range(nx):
         for j in range(ny):
             X[i][j] = i
             Y[i][j] = j
+            U[j][i] = math.sqrt(u[i][j]**2+v[i][j]**2)
 
-    plt.quiver(X, Y, u, v, headaxislength=6, units='inches')
+    plt.pcolor(U)
+    plt.colorbar()
+    plt.quiver(X, Y, u, v, headaxislength=6,color='black')
     plt.title("Velocity Field for Pipe with Constriction")
     plt.gca().set_aspect('equal', adjustable='box')
 
-    xmax = length* scalef
-    ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    # xmax = length* scalef
+    # ymax = len_m*scalef
+    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     # plt.colorbar()
     plt.show()
 
-u, v = getFluidVel(streamfun, 60, 60)
+# u, v = getFluidVel(streamfun, 60, 60)
 # plotVelocityField(u, v, 60, 60)
 
 #Run Simulation
@@ -901,7 +702,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollisionAd(R, x, y, xj, yj)
+                    Fx, Fy, V = calcCollision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -1060,7 +861,8 @@ def generateAnim(y, r, n):
     X = np.linspace(0, xmax, int(length*scalef))
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
-    streamfun = calcStreamFun(80)
+    # streamfun = calcStreamFun(80)
+    streamfun = readVelocity()
     u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
@@ -1110,8 +912,9 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
 n = int(length*scalef)
-streamfun = calcStreamFun(80)
-u, v = getFluidVel(streamfun, 80, 50)
+streamfun = calcStreamFun(60)
+# streamfun = readVelocity()
+u, v = getFluidVel(streamfun, 60, 60)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 num_parts = 6
@@ -1130,14 +933,40 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [10, 20, 0,0, 10,30,0,0]
+pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
 
-r = 4.5
-# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 500, pos0, u, v)
+r = 3
+# trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
+
+xmin = 15.0
+xmax = 15.1
+# for i in range(25):
+#     xmid = (xmax + xmin)/2
+#     pos0 = [21, 21, 0,0, 21,39,0,0, xmid,30,0,0]
+#     print(pos0)
+#     trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 #
-# ani = generateAnim(trajectory, r, n)
+#     if (trajectory[-1][2 *4] > trajectory[-1][0]):
+#         print("center particle came out in front")
+#         xmax = xmid
+#     elif (trajectory[-1][0] > length*scalef/2): #clog broke down exists
+#         print("outisde particles came out in front")
+#         xmin = xmid
+#     else :
+#         #clog still exists!
+#         print("clog stable")
+#         break
+
+pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+print(pos0)
+trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
+ani = generateAnim(trajectory, r, n)
 # plt.show()
-# ani.save('clog.070920_trapezoid.gif', writer='imagemagick')
+
+
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+ani.save('clog.072320_4part.mp4', writer=writer)
 
 #===Testing: adding/removing particles===
 
