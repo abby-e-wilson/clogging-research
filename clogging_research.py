@@ -506,6 +506,10 @@ def unitVec(v):
         v_unit = (0, 0)
     return v_unit
 
+
+frictiontot = []
+frictiont = []
+
 #Calculate the forces from a collision between 2 particles
 #R - radius of the particle (in proportion to the system)
 #xi, yi - position of particle 1
@@ -513,7 +517,7 @@ def unitVec(v):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
+def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj, i, t):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = [xi-xj, yi-yj]
@@ -529,16 +533,29 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 
     velnorm = np.sqrt(sum([i**2 for i in rij]))
     rij = np.array(rij)
-    print(rij)
     proj_v_on_r = rij * float(np.dot(vel, rij)/velnorm**2)
     v_perp = vel-proj_v_on_r
 
-    f = 0.2
-    friction = -f*v_perp
-    Fx += friction[0]
-    Fy += friction[1]
+
+    proj_vj_on_r = rij * float(np.dot([vxj,vyj], rij)/velnorm**2)
+    vj_perp = [vxj,vyj]-proj_vj_on_r
+
+    # fric_dir = -v_perp+vj_perp
+    # f = 0.5
+    #
+    # # print(dVdr*f)
+    #
+    # # val = min(abs(dVdr*f), 0.0001)
+    # val = abs(dVdr*f)
+    # # print(val)s
+    # if i == 0 :
+    #     frictiontot.append(-val*fric_dir[0])
+    #     frictiont.append(t)
+    # Fx += -val * fric_dir[0]
+    # Fy += -val * fric_dir[1]
 
     return Fx, Fy, Vij
+
 
 
 #Calculate the forces from a collision between 2 particles
@@ -648,16 +665,82 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 
     return Fx_fluid, Fy_fluid
 
+
+frictionw = []
+frictionwt = []
 #Calculate the potential as the particle approaches a wall
 #x, y - position of particle
 #slope - slope of the wall
 #tau, eta - nondimentionalization constants
 #returns - forces in the x and y directions
-def calcPotentialWall(x, y, slope):
+def calcPotentialWall(x, y, vx, vy, slope, i, t, Fxex, Fyex):
     a = 50
     V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
     Fx = -a*slope*V
     Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
+
+    #friction
+
+    threshold = 0
+    if (math.sqrt(Fx**2+Fy**2) >= threshold):
+        # print("wall friction")
+
+        if (y > 30):
+            dir = unitVec((1, slope))
+        else:
+            dir = unitVec((1, -slope))
+
+        dir = np.array(dir)
+        proj_v_on_slp = dir * float(np.dot([vx,vy], dir)) #CHECK
+        proj_F_on_slp = dir * float(np.dot([Fxex,Fyex], dir)) #CHECK
+
+
+        fk = 0.4
+        fs = 0.45
+        mag = math.sqrt(Fx**2+Fy**2)
+        static = math.sqrt(proj_F_on_slp[0]**2+ proj_F_on_slp[1]**2)
+        static_cap = mag*fs
+        kinetic = mag*fk
+        fdir = unitVec(proj_F_on_slp)
+
+        if (static < static_cap):
+            # if (abs(static) > 0.001):
+            if (i==0):
+                print("static", str(proj_F_on_slp))
+            Fx += -proj_F_on_slp[0]
+            Fy += -proj_F_on_slp[1]
+
+            if (i == 0) :
+                frictionw.append(-proj_F_on_slp[0])
+                frictionwt.append(t)
+        else:
+            if (i==0):
+                print("kinetic", str(proj_F_on_slp), str(fdir))
+            Fx += -kinetic*fdir[0]
+            Fy += -kinetic*fdir[1]
+
+            if (i == 0) :
+                frictionw.append(-kinetic*fdir[0])
+                frictionwt.append(t)
+        # val = min(kinetic, static)
+        # val = (min(abs(mag)*f, 0.1), min(abs(mag)*f, 0.1))
+
+        # print(val)
+        # if (vx >=0):
+        # Fx += -val[0]* proj_v_on_slp[0]*10
+        # Fy += -val[1]* proj_v_on_slp[1]*10
+        # Fx += -val* dir[0]
+        # Fy += -val* dir[1]
+        # if (i == 0) :
+        #     frictionw.append(-val*dir[0])
+        # print("Kinetic? " + str(val == kinetic) + " " + str(proj_v_on_slp))
+        # if i == 0 : frictionw.append(-val[0]*proj_v_on_slp[0])
+        # else:
+        #     Fx += val[0] * dir[0]
+        #     Fy += val[1] * f * dir[1]
+        #     if i == 0 : frictionw.append(val[0]*dir[0])
+
+
     return Fx, Fy, V
 
 # Misc geometry helper functions
@@ -723,7 +806,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj, i, t)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -744,7 +827,18 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
-            wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+
+
+            if (derivs == []) :
+                Fx_last = 0
+                Fy_last = 0
+            else:
+                # print(derivs[-1][3])
+                # print(derivs[-1], i, derivs[-1][i+2], derivs[-1][i+3])
+                Fx_last = derivs[-1][i*4+2][0]
+                Fy_last = derivs[-1][i*4+3][0]
+            print(Fx_col, Fx_fluid,Fy_col,Fy_fluid) #TODO Fix fulid return
+            wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, vx, vy, slope, i, t, Fx_col+Fx_fluid[0], Fy_col+Fy_fluid[0])
             # if (abs(wallX) > 0.001) :
             #     wallX += -0.5*direction[0]
             #     wallY += -0.5*direction[1]
@@ -954,18 +1048,18 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
+# pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
 
-r = 3
+r = 4.5
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
-xmin = 15.0
-xmax = 15.1
+# xmin = 12.6359375
+# xmax = 12.653125
 # for i in range(25):
 #     xmid = (xmax + xmin)/2
 #     pos0 = [21, 21, 0,0, 21,39,0,0, xmid,30,0,0]
 #     print(pos0)
-#     trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
+#     trajectory, energy, forces, t, der = runSim(3, r, 0.1, 300, pos0, u, v)
 #
 #     if (trajectory[-1][2 *4] > trajectory[-1][0]):
 #         print("center particle came out in front")
@@ -978,16 +1072,23 @@ xmax = 15.1
 #         print("clog stable")
 #         break
 
-pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-print(pos0)
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
-ani = generateAnim(trajectory, r, n)
-# plt.show()
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 12.549290466308596, 30, 0, 0]#, 13,24,0,0]
+pos0 = [20,25,0,0,20,35,0,0]
+# print(pos0)
+trajectory, energy, forces, t, der = runSim(2, r, 0.1, 850, pos0, u, v)
+ani = generateAnim(trajectory, r, n)
+plt.show()
+plt.plot(frictiont, frictiontot, label="coll")
+# plt.show()
+plt.plot(frictionwt, frictionw, label="wall")
+plt.legend()
+plt.show()
 
 Writer = animation.writers['ffmpeg']
 writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-ani.save('clog.072320_4part.mp4', writer=writer)
+# ani.save('clog.072320_4part.mp4', writer=writer)
 
 #===Testing: adding/removing particles===
 
