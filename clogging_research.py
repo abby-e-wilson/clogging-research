@@ -255,34 +255,42 @@ def readVelocity():
 
 def plotStreamFunWProf(streamfun, n) :
     streamfun_graph = np.zeros((n,n))
+    X = np.zeros((n,n))
+    Y = np.zeros((n,n))
 
     for i in range(n):
         for j in range(n):
+            X[i][j] = i
+            Y[i][j] = j
             streamfun_graph[i][j] = streamfun[j][i]
 
     bounds = np.linspace(np.amin(streamfun), np.amax(streamfun), 10)
     norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
-    plt.pcolormesh(streamfun_graph, norm=norm)
+    # plt.pcolormesh(streamfun_graph, norm=norm)
+    bd = np.linspace(0,1,10)
+    plt.contour(X, Y, streamfun, levels=bd[1:-1])
+    plt.gca().set_aspect('equal', adjustable='box')
+
 
     xmax = length* scalef
     ymax = len_m*scalef
     plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
-    plt.title("Streamfunction")
+    plt.title("Streamlines of the Streamfunction")
     plt.xlabel("<--- length --->")
     plt.ylabel("<--- Pipe Inlet --->")
-    plt.colorbar()
+    # plt.colorbar()
     # plt.plot(vels, x, color="white")
 
-    # plt.savefig("streamfun_corr_cont.png")
+    plt.savefig("streamfun_corr_lines.png")
     plt.show()
 
 # n = int(length*scalef)
 # # #
 # plotStreamFunVals(60)
-# streamfun = calcStreamFun(60)
-# plotStreamFun(streamfun, 60)
+streamfun = calcStreamFun(60)
+plotStreamFunWProf(streamfun, 60)
 # writeVelocity(streamfun)
 
 def getFluidVelGraphic(streamfun, nx, ny):
@@ -461,24 +469,53 @@ def plotVelocityField(u, v, nx, ny):
     X = np.zeros((nx, ny))
     Y = np.zeros((nx, ny))
     U = np.zeros((nx, ny))
+    V = np.zeros((nx, ny))
+    mag = np.zeros((nx, ny))
 
-    for i in range(nx):
-        for j in range(ny):
-            X[i][j] = i
-            Y[i][j] = j
-            U[j][i] = math.sqrt(u[i][j]**2+v[i][j]**2)
+    #
+    for i in range(30):
+        for j in range(30):
+            # if (i!=0 or j!=0):
+            X[i*2][j*2] = i*2
+            Y[i*2][j*2] = j*2
+            U[i*2][j*2] = u[i*2][j*2]
+            V[i*2][j*2] = v[i*2][j*2]
+            X[i*2+1][j*2+1]=-10
+            # u[i*2][j*2] = math.sqrt(u[i*2][j*2]**2+v[i*2][j*2]**2)
+    #
+    n=60
+    for i in range(60):
+        for j in range(60):
 
-    plt.pcolor(U)
-    plt.colorbar()
+            if (j == n-1 or j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
+                #upper bd
+                X[i][j] = -10
+                Y[i][j] = 0
+            elif (j<=(slope*i) and j<=(len_m*scalef-len_c*scalef-slope*i)):
+                X[i][j] = -10
+                Y[i][j] = 0
+            elif (i%2==0 and j%2==0):
+                X[i][j] = i
+                Y[i][j] = j
+                U[i][j] = u[i][j]
+                V[i][j] = v[i][j]
+                mag[i][j] = math.sqrt(u[i][j]**2+v[i][j]**2)
+            else:
+                X[i][j]=-10
+
+    # plt.pcolor(U)
+    # plt.colorbar()
     plt.quiver(X, Y, u, v, headaxislength=6,color='black')
+    plt.xlim(0,60)
     plt.title("Velocity Field for Pipe with Constriction")
     plt.gca().set_aspect('equal', adjustable='box')
 
-    # xmax = length* scalef
-    # ymax = len_m*scalef
-    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    xmax = length* scalef
+    ymax = len_m*scalef
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
     # plt.colorbar()
+    # plt.savefig("corr_velfield.png")
     plt.show()
 
 # u, v = getFluidVel(streamfun, 60, 60)
@@ -957,16 +994,16 @@ xmax = 15.1
 #         print("clog stable")
 #         break
 
-pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-print(pos0)
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
-ani = generateAnim(trajectory, r, n)
-# plt.show()
-
-
-Writer = animation.writers['ffmpeg']
-writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-ani.save('clog.072320_4part.mp4', writer=writer)
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+# print(pos0)
+# trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
+# ani = generateAnim(trajectory, r, n)
+# # plt.show()
+#
+#
+# Writer = animation.writers['ffmpeg']
+# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+# ani.save('clog.072320_4part.mp4', writer=writer)
 
 #===Testing: adding/removing particles===
 
