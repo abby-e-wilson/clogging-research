@@ -36,6 +36,7 @@ slope = (len_m-len_c)/length
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
 R_actual = 10 * 10**(-6)
+inertia = 2/5*mass*R_actual**2
 
 #===Physical Constants===
 E = 10 ** 6  #start with super soft spheres
@@ -233,6 +234,22 @@ def getFluidVel(streamfun, nx, ny):
     print(maxval, maxV)
     return u, v
 
+def vorticity(u, v,n ):
+    w = np.zeros((n,n))
+    for i in range(1,n-1):
+        for j in range(1,n-1):
+            w[i][j] = dPsi_dx(v,1,i,j) - dPsi_dy(u,1,i,j)
+
+    plt.pcolor(w)
+    plt.colorbar()
+    plt.show()
+
+    return w
+
+# streamfun = calcStreamFun(60)
+# u, v = getFluidVel(streamfun, 60,60)
+# vorticity(u,v,60)
+
 def writeVelocity(streamfun):
 
     try:
@@ -289,8 +306,8 @@ def plotStreamFunWProf(streamfun, n) :
 # n = int(length*scalef)
 # # #
 # plotStreamFunVals(60)
-streamfun = calcStreamFun(60)
-plotStreamFunWProf(streamfun, 60)
+# streamfun = calcStreamFun(60)
+# plotStreamFunWProf(streamfun, 60)
 # writeVelocity(streamfun)
 
 def getFluidVelGraphic(streamfun, nx, ny):
@@ -694,6 +711,34 @@ def plotWallForce():
     plt.ylabel("Force")
     plt.show()
 
+
+def interpolateVort(w, dx, dy, nx, ny):
+    x = np.arange(0, nx, 1)
+    y = np.arange(0, ny, 1)
+
+    vorticity = interpolate.interp2d(x, y, w.flatten(), kind='cubic')
+
+    return vorticity
+
+def calcHydroTorque(w, x, y, R):
+    #TODO should r be cubed?
+    t = 8 * math.pi * dyn_vis * R_actual**3 * w(x,y)
+    # print(w(x,y), x, y)
+    return t
+
+streamfun = calcStreamFun(60)
+u,v = getFluidVel(streamfun, 60,60)
+# todo update R
+w = vorticity(u,v,60)
+wfn = interpolateVort(w,1,1,60,60)
+vortx = []
+for i in range(1,2000):
+    # print(wfn(15,60/100/i))
+    vortx.append(calcHydroTorque(wfn, 30,60*(2000-i)/2000, 1))
+
+plt.plot(vortx)
+plt.show()
+
 # plotWallForce()
 # Step the simulation: Calculate the derivatives at a given point
 
@@ -709,17 +754,19 @@ def plotWallForce():
 #
 #Returns: derivatives of each value of the position array
 #         [x0', y0', x0'', y0'', x1'...]
-def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
+def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx):
 
     ddt = []
     V_col = 0
     times.append(t)
 
     for i in range(num_parts):
-        x = pos[i*4]
-        y = pos[i*4+1]
-        vx = pos[i*4+2]
-        vy = pos[i*4+3]
+        x = pos[i*6]
+        y = pos[i*6+1]
+        vx = pos[i*6+2]
+        vy = pos[i*6+3]
+        theta = pos[i*6+4]
+        w = pos[i*6+5]
 
         #force due to fluid flow
         #TODO: testing w/o nondim
@@ -730,14 +777,14 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
         Fy_col = 0
         for j in range(num_parts):
             if j != i:
-                distance = math.sqrt((x-pos[j*4])**2 + (y-pos[j*4+1])**2)
+                distance = math.sqrt((x-pos[j*6])**2 + (y-pos[j*6+1])**2)
 
                 #if the particles overlap
                 if (distance < 2*R):
-                    xj = pos[j*4]
-                    yj = pos[j*4+1]
-                    vxj = pos[j*4+2]
-                    vyj = pos[j*4+3]
+                    xj = pos[j*6]
+                    yj = pos[j*6+1]
+                    vxj = pos[j*6+2]
+                    vyj = pos[j*6+3]
 
                     Fx, Fy, V = calcCollision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
                     Fx_col += Fx
@@ -771,7 +818,10 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 
         Fx_net = Fx_fluid + wallX + Fx_col
         Fy_net = Fy_fluid + wallY + Fy_col
-        ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
+
+        Tnet = calcHydroTorque(vortx, x,y,R)
+
+        ddt = ddt + [vx, vy, Fx_net, Fy_net, w, Tnet/inertia] #TODO should the acceleration be F/m??
 
     derivs.append(ddt)
 
@@ -873,9 +923,11 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     times = []
     derivs = []
     xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+    w = vorticity(u,v,60)
+    vortx = interpolateVort(w, 1,1,60,60)
 
     solver = ode(stepODE).set_integrator('lsoda')
-    solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
+    solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx)
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
         t.append(solver.t)
@@ -918,17 +970,22 @@ def generateAnim(y, r, n):
     def updateParticles_2(timestep):
 
         positions = []
-        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*20)])/6)
 
-        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*20)])/6)
         for i in range(curr_num_parts):
-            positions.append((y[:][int(timestep*20)][0+i*4], y[:][int(timestep*20)][1+i*4]))
+            posx = y[:][int(timestep*20)][0+i*6]
+            posy = y[:][int(timestep*20)][1+i*6]
+            theta = y[:][int(timestep*20)][4+i*6]
+            positions.append((posx, posy))
 
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="black", fill=False))
                 ax.add_artist(circles[i])
 
             circles[i].center = positions[-1]
+
+            ax.plot((posx, posy), (posx + R*math.cos(theta), posy + R*math.sin(theta)))
 
         #hide circles that have exited the system
         for i in range(len(circles) -curr_num_parts):
@@ -970,10 +1027,10 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
+pos0 = [21, 21, 0,0, 0,0]#21,39,0,0, 15,30,0,0]
 
 r = 3
-# trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(1, r, 0.1, 200, pos0, u, v)
 
 xmin = 15.0
 xmax = 15.1
@@ -997,8 +1054,8 @@ xmax = 15.1
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 # print(pos0)
 # trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
-# ani = generateAnim(trajectory, r, n)
-# # plt.show()
+ani = generateAnim(trajectory, r, n)
+plt.show()
 #
 #
 # Writer = animation.writers['ffmpeg']
