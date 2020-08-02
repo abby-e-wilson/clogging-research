@@ -389,7 +389,7 @@ def plotFluidVel(streamfun, nx, ny):
     plt.savefig("streamfun_corr_velprof.png")
     plt.show()
 
-streamfun = calcStreamFun(60)
+# streamfun = calcStreamFun(60)
 # plotFluidVel(streamfun, 60,60)
 
 # streamfun = readVelocity()
@@ -726,18 +726,18 @@ def calcHydroTorque(w, x, y, R):
     # print(w(x,y), x, y)
     return t
 
-streamfun = calcStreamFun(60)
-u,v = getFluidVel(streamfun, 60,60)
-# todo update R
-w = vorticity(u,v,60)
-wfn = interpolateVort(w,1,1,60,60)
-vortx = []
-for i in range(1,2000):
-    # print(wfn(15,60/100/i))
-    vortx.append(calcHydroTorque(wfn, 30,60*(2000-i)/2000, 1))
-
-plt.plot(vortx)
-plt.show()
+# streamfun = calcStreamFun(60)
+# u,v = getFluidVel(streamfun, 60,60)
+# # todo update R
+# w = vorticity(u,v,60)
+# wfn = interpolateVort(w,1,1,60,60)
+# vortx = []
+# for i in range(1,2000):
+#     # print(wfn(15,60/100/i))
+#     vortx.append(calcHydroTorque(wfn, 30,60*(2000-i)/2000, 1))
+#
+# plt.plot(vortx)
+# plt.show()
 
 # plotWallForce()
 # Step the simulation: Calculate the derivatives at a given point
@@ -965,18 +965,21 @@ def generateAnim(y, r, n):
     plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
+    scatter = ax.scatter([], [], c='red')
     circles = []
+
 
     def updateParticles_2(timestep):
 
         positions = []
-        curr_num_parts = int(len(y[:][int(timestep*20)])/6)
+        dots = []
+        curr_num_parts = int(len(y[:][int(timestep*5)])/5)
 
-        curr_num_parts = int(len(y[:][int(timestep*20)])/6)
+        curr_num_parts = int(len(y[:][int(timestep*5)])/5)
         for i in range(curr_num_parts):
-            posx = y[:][int(timestep*20)][0+i*6]
-            posy = y[:][int(timestep*20)][1+i*6]
-            theta = y[:][int(timestep*20)][4+i*6]
+            posx = y[:][int(timestep*5)][0+i*6]
+            posy = y[:][int(timestep*5)][1+i*6]
+            theta = y[:][int(timestep*5)][4+i*6]
             positions.append((posx, posy))
 
             if (i >= len(circles)):
@@ -985,16 +988,17 @@ def generateAnim(y, r, n):
 
             circles[i].center = positions[-1]
 
-            ax.plot((posx, posy), (posx + R*math.cos(theta), posy + R*math.sin(theta)))
+            dots.append([posx + r*math.cos(theta), posy + r*math.sin(theta)])
 
         #hide circles that have exited the system
         for i in range(len(circles) -curr_num_parts):
             circles[curr_num_parts+i].center = (-5,-5)
 
-        return circles,
+        scatter.set_offsets(dots)
+        return circles, scatter
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/20), interval=1)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/5), interval=1)
 
     return ani
 
