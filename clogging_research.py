@@ -43,7 +43,7 @@ poisson = 0.3
 alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
 density = 997 #kg/m^3, for water
-maxV = .2 #max fluid velocity
+maxV = 0.2 #max fluid velocity
 
 #===Nondimentionalization Constants===
 beta = 6 * math.pi * dyn_vis * R_actual
@@ -228,8 +228,8 @@ def getFluidVel(streamfun, nx, ny):
             v[i][j] = -dPsi_dx(streamfun, .1, i, j)
             mag = math.sqrt(u[i][j]**2+v[i][j]**2)
             if mag > maxval : maxval = mag
-    u = u/maxval * maxV
-    v = v/maxval * maxV
+    u = u/maxval * maxV #/ math.sqrt(2)
+    v = v/maxval * maxV#/math.sqrt(2)
     print(maxval, maxV)
     return u, v
 
@@ -268,19 +268,23 @@ def plotStreamFunWProf(streamfun, n) :
     norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
     # plt.pcolormesh(streamfun_graph, norm=norm)
     bd = np.linspace(0,1,10)
-    plt.contour(X, Y, streamfun, levels=bd[1:-1])
+    plt.contourf(X, Y, streamfun, levels=bd)
+    plt.colorbar()
+    plt.contour(X, Y, streamfun, levels=bd[1:-1], colors='k')
     plt.gca().set_aspect('equal', adjustable='box')
 
 
     xmax = length* scalef
     ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
+    plt.fill((0, xmax/2, xmax,0), (ymax, scalef*(len_m+len_c)/2, ymax,ymax), c="white")
+    plt.fill((0, xmax/2, xmax,0), (0, scalef*(len_m-len_c)/2, 0,0), c="white")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamlines of the Streamfunction")
-    plt.xlabel("<--- length --->")
-    plt.ylabel("<--- Pipe Inlet --->")
-    # plt.colorbar()
+    plt.xlabel("<---- Pipe length ---->")
+    plt.ylabel("<---- Pipe Inlet ---->")
+    plt.xlim(0,60)
+    plt.ylim(0,60)
     # plt.plot(vels, x, color="white")
 
     plt.savefig("streamfun_corr_lines.png")
@@ -289,8 +293,8 @@ def plotStreamFunWProf(streamfun, n) :
 # n = int(length*scalef)
 # # #
 # plotStreamFunVals(60)
-streamfun = calcStreamFun(60)
-plotStreamFunWProf(streamfun, 60)
+# streamfun = calcStreamFun(60)
+# plotStreamFunWProf(streamfun, 60)
 # writeVelocity(streamfun)
 
 def getFluidVelGraphic(streamfun, nx, ny):
@@ -372,7 +376,7 @@ def plotFluidVel(streamfun, nx, ny):
     plt.savefig("streamfun_corr_velprof.png")
     plt.show()
 
-streamfun = calcStreamFun(60)
+# streamfun = calcStreamFun(60)
 # plotFluidVel(streamfun, 60,60)
 
 # streamfun = readVelocity()
@@ -487,6 +491,7 @@ def plotVelocityField(u, v, nx, ny):
     for i in range(60):
         for j in range(60):
 
+            mag[j][i] = math.sqrt(u[i][j]**2+v[i][j]**2)
             if (j == n-1 or j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
                 #upper bd
                 X[i][j] = -10
@@ -499,22 +504,25 @@ def plotVelocityField(u, v, nx, ny):
                 Y[i][j] = j
                 U[i][j] = u[i][j]
                 V[i][j] = v[i][j]
-                mag[i][j] = math.sqrt(u[i][j]**2+v[i][j]**2)
             else:
                 X[i][j]=-10
 
-    # plt.pcolor(U)
+    plt.pcolor(mag)
+    plt.colorbar()
     # plt.colorbar()
     plt.quiver(X, Y, u, v, headaxislength=6,color='black')
     plt.xlim(0,60)
     plt.title("Velocity Field for Pipe with Constriction")
+    plt.xlabel("<---- Pipe length ---->")
+    plt.ylabel("<---- Pipe Inlet ---->")
     plt.gca().set_aspect('equal', adjustable='box')
 
     xmax = length* scalef
     ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
-    # plt.colorbar()
+    plt.fill((0, xmax/2, xmax,0), (ymax, scalef*(len_m+len_c)/2+1, ymax, ymax), c="white")
+    plt.fill((0, xmax/2, xmax,0), (0, scalef*(len_m-len_c)/2, 0,0), c="white")
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2+1, ymax), c="black")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="black")
     # plt.savefig("corr_velfield.png")
     plt.show()
 
@@ -542,7 +550,7 @@ def unitVec(v):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
+def lision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
@@ -564,7 +572,7 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def calcCollisionAd(R, xi, yi, xj, yj):
+def lisionAd(R, xi, yi, xj, yj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
@@ -615,7 +623,7 @@ def plotColForceAd():
     f = []
     d = []
     for i in range(100):
-        fx, fy, v = calcCollisionAd(R, xi, yi,xj[i], yj)
+        fx, fy, v = lisionAd(R, xi, yi,xj[i], yj)
         f.append(fx)
         d.append(v)
 
@@ -723,6 +731,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 
         #force due to fluid flow
         #TODO: testing w/o nondim
+        # Fx_fluid, Fy_fluid = calcFluidForce(x, y, vx, vy, xVel, yVel)
         Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
 
         #force due to collisions
@@ -739,7 +748,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = lision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -817,7 +826,7 @@ def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = calCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -865,6 +874,8 @@ def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
 #          forces - forces at each timestep
 #          times - time at each iteration
 #          derives - derivatives at each timestep
+
+velocities = []
 def runSim(num_parts, r, dt, tf, pos0, u, v):
 
     print("starting sim....")
@@ -874,18 +885,24 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     derivs = []
     xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 
-    solver = ode(stepODE).set_integrator('lsoda')
+    solver = ode(stepODE).set_integrator('lsoda', atol=2.0*10**(-12), rtol=2.0*10**(-12))
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
         t.append(solver.t)
+        print(solver.t)
         out = solver.integrate(solver.t+dt)
         y = np.concatenate((y, [out]), axis=0)
+        vels = []
+        for i in range(num_parts):
+            vels.append([math.sqrt(out[i*4+2]**2+ out[i*4+3]**2)])
+        velocities.append(vels)
 
 #     print(solver.get_return_code())
 
     print("finished sim...")
-    return y, energy, forces, times, derivs
+    # return y, energy, forces, times, derivs
+    return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
@@ -970,13 +987,13 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
+# pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
 
 r = 3
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
-xmin = 15.0
-xmax = 15.1
+# xmin = 15.0
+# xmax = 15.1
 # for i in range(25):
 #     xmid = (xmax + xmin)/2
 #     pos0 = [21, 21, 0,0, 21,39,0,0, xmid,30,0,0]
@@ -994,17 +1011,104 @@ xmax = 15.1
 #         print("clog stable")
 #         break
 
-# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
-# trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
+pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+trajectory, energy, forces, t, der = runSim(4, r, 0.1, 110, pos0, u, v)
 # ani = generateAnim(trajectory, r, n)
-# # plt.show()
+# plt.show()
 #
 #
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.072320_4part.mp4', writer=writer)
+# ani.save('clog.072920_4part_slow.mp4', writer=writer)
 
+fig, ax = plt.subplots()
+
+index = 0
+for i in range(len(t)):
+    if (t[i] >=82):
+        index = i
+        break
+print(index, t[index])
+circles = []
+for i in range(4):
+    x = (trajectory[:][index][0+i*4])
+    y = (trajectory[:][index][1+i*4])
+
+    circles.append(Circle((0,0), r, color="black", fill=False))
+    circles[i].center = [x,y]
+    ax.add_artist(circles[i])
+
+
+
+
+xmax = length*scalef
+ymax = len_m*scalef
+X = np.linspace(0, xmax, int(length*scalef))
+Y = np.linspace(0, ymax, int(len_m*scalef))
+plt.xlim(0,xmax)
+plt.ylim(0,ymax)
+
+plt.gca().set_aspect('equal', adjustable='box')
+plt.grid(b=True, which='major', color='#666666', linestyle='-')
+
+plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
+plt.show()
+
+
+v1 = []
+v2 = []
+v3 = []
+v4 = []
+for i in velocities:
+    print(i)
+    v1.append(i[0])
+    v2.append(i[1])
+    v3.append(i[2])
+    v4.append(i[3])
+
+plt.plot(t, v1, label='particle 1')
+plt.plot(t, v2, label='particle 2')
+plt.plot(t, v3, label='particle 3')
+plt.plot(t, v4, label='particle 4')
+plt.legend()
+# plt.plot(v4)
+plt.xlabel('time')
+plt.ylabel('velocity')
+plt.title('Velocity of particles - 4 particle bridge')
+plt.xlim(60,110)
+plt.ylim(0,0.1)
+plt.show()
+fcx = []
+fwx = []
+ffx = []
+
+for i in range(len(forces)):
+    fcx.append(forces[i][2][0])
+    fwx.append(forces[i][1][0])
+    ffx.append(forces[i][0][0])
+
+plt.plot(t, fwx, label="wall")
+plt.plot(t, fcx, label="collision")
+plt.plot(t, ffx, label="fluid")
+plt.title("Forces over time on one particle")
+plt.ylabel("Force in x direction")
+plt.xlabel("time")
+plt.legend()
+plt.show()
+
+
+stable1 = np.where(v1 == np.amin(v1))
+print(stable1, np.amin(v1))
+stable2 = np.where(v2 == np.amin(v2))
+print(stable2, np.amin(v2))
+stable3 = np.where(v3 == np.amin(v3))
+print(stable3, np.amin(v3))
+# stable4 = np.where(v4 == np.amin(v4))
+# print(stable4, np.amin(v4))
 #===Testing: adding/removing particles===
 
 
