@@ -550,7 +550,7 @@ def unitVec(v):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def lision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
+def calcCollision(R, xi, yi, xj, yj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
@@ -572,7 +572,7 @@ def lision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def lisionAd(R, xi, yi, xj, yj):
+def CollisionAd(R, xi, yi, xj, yj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
@@ -623,7 +623,7 @@ def plotColForceAd():
     f = []
     d = []
     for i in range(100):
-        fx, fy, v = lisionAd(R, xi, yi,xj[i], yj)
+        fx, fy, v = CollisionAd(R, xi, yi,xj[i], yj)
         f.append(fx)
         d.append(v)
 
@@ -748,7 +748,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     vxj = pos[j*4+2]
                     vyj = pos[j*4+3]
 
-                    Fx, Fy, V = lision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = calcCollision(R, x, y, xj, yj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
@@ -901,8 +901,8 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 #     print(solver.get_return_code())
 
     print("finished sim...")
-    # return y, energy, forces, times, derivs
-    return y, energy, forces, t, derivs
+    return y, energy, forces, times, derivs
+    # return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
@@ -1023,90 +1023,189 @@ trajectory, energy, forces, t, der = runSim(4, r, 0.1, 110, pos0, u, v)
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 # ani.save('clog.072920_4part_slow.mp4', writer=writer)
 
+#====================================================
+#Hessian
+
 fig, ax = plt.subplots()
 
 index = 0
+pos_stable = []
 for i in range(len(t)):
-    if (t[i] >=82):
+    if (t[i] >=80):
         index = i
         break
-print(index, t[index])
-circles = []
-for i in range(4):
-    x = (trajectory[:][index][0+i*4])
-    y = (trajectory[:][index][1+i*4])
+        print(index, t[index])
+        circles = []
+        for i in range(4):
+            x = (trajectory[:][index][0+i*4])
+            y = (trajectory[:][index][1+i*4])
 
-    circles.append(Circle((0,0), r, color="black", fill=False))
-    circles[i].center = [x,y]
-    ax.add_artist(circles[i])
+            pos_stable.append(x,y)
 
+            circles.append(Circle((0,0), r, color="black", fill=False))
+            circles[i].center = [x,y]
+            ax.add_artist(circles[i])
 
-
-
-xmax = length*scalef
-ymax = len_m*scalef
-X = np.linspace(0, xmax, int(length*scalef))
-Y = np.linspace(0, ymax, int(len_m*scalef))
-plt.xlim(0,xmax)
-plt.ylim(0,ymax)
-
-plt.gca().set_aspect('equal', adjustable='box')
-plt.grid(b=True, which='major', color='#666666', linestyle='-')
-
-plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
-
-plt.show()
+print(pos_stable)
 
 
-v1 = []
-v2 = []
-v3 = []
-v4 = []
-for i in velocities:
-    print(i)
-    v1.append(i[0])
-    v2.append(i[1])
-    v3.append(i[2])
-    v4.append(i[3])
+# pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
+n = 4
+R = 3
+def Energy(pos, n, R):
 
-plt.plot(t, v1, label='particle 1')
-plt.plot(t, v2, label='particle 2')
-plt.plot(t, v3, label='particle 3')
-plt.plot(t, v4, label='particle 4')
-plt.legend()
-# plt.plot(v4)
-plt.xlabel('time')
-plt.ylabel('velocity')
-plt.title('Velocity of particles - 4 particle bridge')
-plt.xlim(60,110)
-plt.ylim(0,0.1)
-plt.show()
-fcx = []
-fwx = []
-ffx = []
+    E = 0
+    for i in range(n):
+        x = pos[i*2+0]
+        y = pos[i*2+1]
 
-for i in range(len(forces)):
-    fcx.append(forces[i][2][0])
-    fwx.append(forces[i][1][0])
-    ffx.append(forces[i][0][0])
+        for j in range(n):
+            if j != i:
+                distance = math.sqrt((x-pos[j*2])**2 + (y-pos[j*2+1])**2)
 
-plt.plot(t, fwx, label="wall")
-plt.plot(t, fcx, label="collision")
-plt.plot(t, ffx, label="fluid")
-plt.title("Forces over time on one particle")
-plt.ylabel("Force in x direction")
-plt.xlabel("time")
-plt.legend()
-plt.show()
+                #if the particles overlap
+                if (distance < 2*R):
+                    xj = pos[j*2]
+                    yj = pos[j*2+1]
+
+                    Fx, Fy, V = calcCollision(R, x, y, xj, yj)
+                    E += V
+                    # print(V)
+
+        #calculate the point on the edge of the particle which is closest to the wall
+        #the edge of the particle is what matters, not the center
+        #this is a vector parpendicular to the wall
+        if (y <= len_m/2*scalef):
+            direction = unitVec((-1, 1/slope))
+        else:
+            direction = unitVec((-1, -1/slope))
+        wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+        E += V_wall
+        # print(V_wall)
+
+    # print("E:  ", E)
+    return E
 
 
-stable1 = np.where(v1 == np.amin(v1))
-print(stable1, np.amin(v1))
-stable2 = np.where(v2 == np.amin(v2))
-print(stable2, np.amin(v2))
-stable3 = np.where(v3 == np.amin(v3))
-print(stable3, np.amin(v3))
+def second_deriv_E(pos, n, R, i, j, di, dj):
+
+
+    pos_1_1 = pos.copy()
+    pos_1_1[i] += di
+    pos_1_1[j] += dj
+    print(pos[i], pos_1_1[i], di)
+
+
+    pos_1_neg1 = pos.copy()
+    pos_1_neg1[i] += di
+    pos_1_neg1[j] -= dj
+
+
+    pos_neg1_1 = pos.copy()
+    pos_neg1_1[i] -= di
+    pos_neg1_1[j] += dj
+
+    pos_neg1_neg1 = pos.copy()
+    pos_neg1_neg1[i] -= di
+    pos_neg1_neg1[j] -= dj
+
+    derivE = (Energy(pos_1_1, n, R) - Energy(pos_1_neg1, n, R) - Energy(pos_neg1_1, n, R) + Energy(pos_neg1_neg1, n, R))/4/di/dj
+
+    return derivE
+
+def second_deriv_one_var(pos, n, R, i, di):
+    pos_plus = pos.copy()
+    pos_plus[i] += di
+
+    pos_neg = pos.copy()
+    pos_neg[i] -= di
+
+    derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
+
+    return derivE
+
+Hessian = np.zeros((n*2, n*2))
+for i in range(n*2):
+    for j in range(n*2):
+        if (i == j):
+            Hessian[i][j] = second_deriv_one_var(pos_stable, n, R, i, 0.001)
+        else:
+            Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 0.001, 0.001)
+
+# np.savetxt("hessian_diff.txt", Hessian)
+
+w, v = linalg.eig(Hessian)
+print(w)
+# print(linalg.eig(Hessian))
+#=====================================================
+#
+#
+
+#
+# xmax = length*scalef
+# ymax = len_m*scalef
+# X = np.linspace(0, xmax, int(length*scalef))
+# Y = np.linspace(0, ymax, int(len_m*scalef))
+# plt.xlim(0,xmax)
+# plt.ylim(0,ymax)
+#
+# plt.gca().set_aspect('equal', adjustable='box')
+# plt.grid(b=True, which='major', color='#666666', linestyle='-')
+#
+# plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+# plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+#
+# plt.show()
+#
+#
+# v1 = []
+# v2 = []
+# v3 = []
+# v4 = []
+# for i in velocities:
+#     print(i)
+#     v1.append(i[0])
+#     v2.append(i[1])
+#     v3.append(i[2])
+#     v4.append(i[3])
+#
+# plt.plot(t, v1, label='particle 1')
+# plt.plot(t, v2, label='particle 2')
+# plt.plot(t, v3, label='particle 3')
+# plt.plot(t, v4, label='particle 4')
+# plt.legend()
+# # plt.plot(v4)
+# plt.xlabel('time')
+# plt.ylabel('velocity')
+# plt.title('Velocity of particles - 4 particle bridge')
+# plt.xlim(60,110)
+# plt.ylim(0,0.1)
+# plt.show()
+# fcx = []
+# fwx = []
+# ffx = []
+#
+# for i in range(len(forces)):
+#     fcx.append(forces[i][2][0])
+#     fwx.append(forces[i][1][0])
+#     ffx.append(forces[i][0][0])
+#
+# plt.plot(t, fwx, label="wall")
+# plt.plot(t, fcx, label="collision")
+# plt.plot(t, ffx, label="fluid")
+# plt.title("Forces over time on one particle")
+# plt.ylabel("Force in x direction")
+# plt.xlabel("time")
+# plt.legend()
+# plt.show()
+#
+#
+# stable1 = np.where(v1 == np.amin(v1))
+# print(stable1, np.amin(v1))
+# stable2 = np.where(v2 == np.amin(v2))
+# print(stable2, np.amin(v2))
+# stable3 = np.where(v3 == np.amin(v3))
+# print(stable3, np.amin(v3))
 # stable4 = np.where(v4 == np.amin(v4))
 # print(stable4, np.amin(v4))
 #===Testing: adding/removing particles===
