@@ -44,7 +44,8 @@ poisson = 0.3
 alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
 density = 997 #kg/m^3, for water
-maxV = .2 #max fluid velocity
+#TODO TESTING
+maxV = 2 #max fluid velocity
 
 #===Nondimentionalization Constants===
 beta = 6 * math.pi * dyn_vis * R_actual
@@ -567,7 +568,9 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 
     #calculate potential
     Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * ((1-distance/(2*R))**alpha)
-    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
+    const = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * (-alpha/2/R)
+    dVdr =  const * (1-distance/(2*R))**(alpha-1)
+    print(dVdr)
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
 
@@ -679,6 +682,7 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
     Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
     Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
 
+    print(Fx_fluid, Fy_fluid)
     return Fx_fluid, Fy_fluid
 
 #Calculate the potential as the particle approaches a wall
@@ -720,9 +724,9 @@ def interpolateVort(w, dx, dy, nx, ny):
 
     return vorticity
 
-def calcHydroTorque(w, x, y, R):
+def calcHydroTorque(w, x, y, a, R):
     #TODO should r be cubed?
-    t = 8 * math.pi * dyn_vis * R_actual**3 * w(x,y)
+    t = 8 * math.pi * dyn_vis * R_actual**3 * (w(x,y)-a)
     # print(w(x,y), x, y)
     return t
 
@@ -771,6 +775,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         #force due to fluid flow
         #TODO: testing w/o nondim
         Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
+        # Fx_fluid, Fy_fluid = calcFluidForce(x, y, vx, vy, xVel, yVel)
 
         #force due to collisions
         Fx_col = 0
@@ -819,7 +824,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         Fx_net = Fx_fluid + wallX + Fx_col
         Fy_net = Fy_fluid + wallY + Fy_col
 
-        Tnet = calcHydroTorque(vortx, x,y,R)
+        Tnet = calcHydroTorque(vortx, x,y,w, R)
 
         ddt = ddt + [vx, vy, Fx_net, Fy_net, w, Tnet/inertia] #TODO should the acceleration be F/m??
 
@@ -837,67 +842,67 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 #vVel, yVel - the functions for calculating the velocity at a certain position
 #Returns: derivatives of each value of the position array
 #         [x0', y0', x0'', y0'', x1'...]
-def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
-
-    ddt = []
-    V_col = 0
-    times.append(t)
-
-    for i in range(num_parts):
-        x = pos[i*4]
-        y = pos[i*4+1]
-        vx = pos[i*4+2]
-        vy = pos[i*4+3]
-
-        #force due to fluid flow
-        #TODO: testing w/o nondim
-        Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
-
-        #force due to collisions
-        Fx_col = 0
-        Fy_col = 0
-        for j in range(num_parts):
-            if j != i:
-                distance = math.sqrt((x-pos[j*4])**2 + (y-pos[j*4+1])**2)
-
-                #if the particles overlap
-                if (distance < 2*R):
-                    xj = pos[j*4]
-                    yj = pos[j*4+1]
-                    vxj = pos[j*4+2]
-                    vyj = pos[j*4+3]
-
-                    Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
-                    Fx_col += Fx
-                    Fy_col += Fy
-                    V_col += V
-
-                    # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
-                    #
-                    # Fx += Fa_x
-                    # Fy += Fa_y
-
-        #force from wall potential
-        wallX = 0
-        wallY = 0
-        V_wall = 0
-        if (x <= length*scalef/2):
-
-            #calculate the point on the edge of the particle which is closest to the wall
-            #the edge of the particle is what matters, not the center
-            #this is a vector parpendicular to the wall
-            if (y <= len_m/2*scalef):
-                direction = unitVec((-1, 1/slope))
-            else:
-                direction = unitVec((-1, -1/slope))
-            wallX, wallY, V = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
-
-        Fx_net = Fx_fluid + wallX + Fx_col
-        Fy_net = Fy_fluid + wallY + Fy_col
-        ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
-
-    energy.append(V_col+V_wall)
-    return ddt
+# def stepODELong(t, pos, num_parts, R, energy, times, xVel, yVel):
+#
+#     ddt = []
+#     V_col = 0
+#     times.append(t)
+#
+#     for i in range(num_parts):
+#         x = pos[i*4]
+#         y = pos[i*4+1]
+#         vx = pos[i*4+2]
+#         vy = pos[i*4+3]
+#
+#         #force due to fluid flow
+#         #TODO: testing w/o nondim
+#         Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
+#
+#         #force due to collisions
+#         Fx_col = 0
+#         Fy_col = 0
+#         for j in range(num_parts):
+#             if j != i:
+#                 distance = math.sqrt((x-pos[j*4])**2 + (y-pos[j*4+1])**2)
+#
+#                 #if the particles overlap
+#                 if (distance < 2*R):
+#                     xj = pos[j*4]
+#                     yj = pos[j*4+1]
+#                     vxj = pos[j*4+2]
+#                     vyj = pos[j*4+3]
+#
+#                     Fx, Fy, V = calcCollision(R, x, y, vx, vy, xj, yj, vxj, vyj)
+#                     Fx_col += Fx
+#                     Fy_col += Fy
+#                     V_col += V
+#
+#                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
+#                     #
+#                     # Fx += Fa_x
+#                     # Fy += Fa_y
+#
+#         #force from wall potential
+#         wallX = 0
+#         wallY = 0
+#         V_wall = 0
+#         if (x <= length*scalef/2):
+#
+#             #calculate the point on the edge of the particle which is closest to the wall
+#             #the edge of the particle is what matters, not the center
+#             #this is a vector parpendicular to the wall
+#             if (y <= len_m/2*scalef):
+#                 direction = unitVec((-1, 1/slope))
+#             else:
+#                 direction = unitVec((-1, -1/slope))
+#             wallX, wallY, V = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+#
+#         Fx_net = Fx_fluid + wallX + Fx_col
+#         Fy_net = Fy_fluid + wallY + Fy_col
+#         ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
+#
+#     energy.append(V_col+V_wall)
+#     return ddt
 
 # Run a simulation. Sets up and moniters the solver
 
@@ -931,6 +936,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
         t.append(solver.t)
+        print(solver.t)
         out = solver.integrate(solver.t+dt)
         y = np.concatenate((y, [out]), axis=0)
 
@@ -973,9 +979,9 @@ def generateAnim(y, r, n):
 
         positions = []
         dots = []
-        curr_num_parts = int(len(y[:][int(timestep*5)])/5)
+        curr_num_parts = int(len(y[:][int(timestep*5)]))
 
-        curr_num_parts = int(len(y[:][int(timestep*5)])/5)
+        curr_num_parts = int(len(y[:][int(timestep*5)])/6)
         for i in range(curr_num_parts):
             posx = y[:][int(timestep*5)][0+i*6]
             posy = y[:][int(timestep*5)][1+i*6]
@@ -1034,7 +1040,7 @@ num_parts = 6
 pos0 = [21, 21, 0,0, 0,0]#21,39,0,0, 15,30,0,0]
 
 r = 3
-trajectory, energy, forces, t, der = runSim(1, r, 0.1, 200, pos0, u, v)
+# trajectory, energy, forces, t, der = runSim(1, r, 0.1, 100, pos0, u, v)
 
 xmin = 15.0
 xmax = 15.1
@@ -1055,9 +1061,9 @@ xmax = 15.1
 #         print("clog stable")
 #         break
 
-# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
-# trajectory, energy, forces, t, der = runSim(4, r, 0.1, 250, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.05, 15, pos0, u, v)
 ani = generateAnim(trajectory, r, n)
 plt.show()
 #
