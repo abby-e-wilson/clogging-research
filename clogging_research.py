@@ -901,8 +901,8 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 #     print(solver.get_return_code())
 
     print("finished sim...")
-    return y, energy, forces, times, derivs
-    # return y, energy, forces, t, derivs
+    # return y, energy, forces, times, derivs
+    return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
@@ -1011,10 +1011,10 @@ r = 3
 #         print("clog stable")
 #         break
 
-# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
+pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
-pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 110, pos0, u, v)
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 110, pos0, u, v)
 # ani = generateAnim(trajectory, r, n)
 # plt.show()
 #
@@ -1031,16 +1031,17 @@ fig, ax = plt.subplots()
 index = 0
 pos_stable = []
 for i in range(len(t)):
-    if (t[i] >=80):
+    # print(t[i])
+    if (t[i] >=100):
         index = i
-        break
         print(index, t[index])
         circles = []
-        for i in range(4):
+        for i in range(3):
             x = (trajectory[:][index][0+i*4])
             y = (trajectory[:][index][1+i*4])
 
-            pos_stable.append(x,y)
+            pos_stable.append(x)
+            pos_stable.append(y)
 
             circles.append(Circle((0,0), r, color="black", fill=False))
             circles[i].center = [x,y]
@@ -1050,7 +1051,7 @@ print(pos_stable)
 
 
 # pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
-n = 4
+n = 3
 R = 3
 def Energy(pos, n, R):
 
@@ -1127,10 +1128,10 @@ def second_deriv_one_var(pos, n, R, i, di):
 Hessian = np.zeros((n*2, n*2))
 for i in range(n*2):
     for j in range(n*2):
-        if (i == j):
-            Hessian[i][j] = second_deriv_one_var(pos_stable, n, R, i, 0.001)
-        else:
-            Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 0.001, 0.001)
+        # if (i == j):
+        #     Hessian[i][j] = second_deriv_one_var(pos_stable, n, R, i, 0.0001)
+        # else:
+        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 0.001, 0.001)
 
 # np.savetxt("hessian_diff.txt", Hessian)
 
