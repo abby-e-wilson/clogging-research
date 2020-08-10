@@ -987,9 +987,9 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-# pos0 = [21, 21, 0,0, 21,39,0,0, 15,30,0,0]
+pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 3
+r = 6
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1011,10 +1011,10 @@ r = 3
 #         print("clog stable")
 #         break
 
-pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 110, pos0, u, v)
+# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 102, pos0, u, v)
 # ani = generateAnim(trajectory, r, n)
 # plt.show()
 #
@@ -1026,33 +1026,37 @@ trajectory, energy, forces, t, der = runSim(3, r, 0.1, 110, pos0, u, v)
 #====================================================
 #Hessian
 
-fig, ax = plt.subplots()
-
+# fig, ax = plt.subplots()
+#
 index = 0
-pos_stable = []
-for i in range(len(t)):
-    # print(t[i])
-    if (t[i] >=100):
-        index = i
-        print(index, t[index])
-        circles = []
-        for i in range(3):
-            x = (trajectory[:][index][0+i*4])
-            y = (trajectory[:][index][1+i*4])
+n = 2
+R = 6
 
-            pos_stable.append(x)
-            pos_stable.append(y)
-
-            circles.append(Circle((0,0), r, color="black", fill=False))
-            circles[i].center = [x,y]
-            ax.add_artist(circles[i])
-
-print(pos_stable)
+# pos_stable = []
+# for i in range(len(t)):
+#     # print(t[i])
+#     if (t[i] >=100):
+#         index = i
+#         for i in range(n):
+#             x = (trajectory[:][index][0+i*4])
+#             y = (trajectory[:][index][1+i*4])
+#
+#             pos_stable.append(x)
+#             pos_stable.append(y)
+# #         print(index, t[index])
+# #         circles = []
+# #
+#         break
+#
+# print(pos_stable)
 
 
 # pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
-n = 3
-R = 3
+dx = 30 - 21.866253691763898
+dy = 30 - 24.016367818392556
+pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
+
+
 def Energy(pos, n, R):
 
     E = 0
@@ -1131,12 +1135,99 @@ for i in range(n*2):
         # if (i == j):
         #     Hessian[i][j] = second_deriv_one_var(pos_stable, n, R, i, 0.0001)
         # else:
-        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 0.001, 0.001)
-
+        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
 # np.savetxt("hessian_diff.txt", Hessian)
 
-w, v = linalg.eig(Hessian)
+# BD Hessian
+xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+# bdHessian = np.zeros((n*2+1, n*2+1))
+# for i in range(n*2+1):
+#     for j in range(n*2+1):
+#         if i==0 and j%2==1:
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i][j+1] = Fy
+#         if j==0 and i%2==1 :
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[i-1], pos_stable[i], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i+1][j] = Fy
+#         elif i!=0 and j!=0:
+#             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
+
+#BD Hessian - separate constraints
+xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+bdHessian = np.zeros((n*3, n*3))
+for i in range(n*3):
+    for j in range(n*3):
+        if i < n and j-n==i*2:
+            Fx, Fy = calcFluidForceNonDim(pos_stable[j-n], pos_stable[j-n-1], 0, 0, xvel, yvel)
+            bdHessian[i][j] = Fx
+            bdHessian[i][j+1] = Fy
+            print("did force")
+        if j<n and i-n==j*2:
+            Fx, Fy = calcFluidForceNonDim(pos_stable[i-n], pos_stable[i-n-1], 0, 0, xvel, yvel)
+            bdHessian[i][j] = Fx
+            bdHessian[i+1][j] = Fy
+        elif i>=n and j>=n:
+            bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-n, j-n, 10e-4, 10e-4)
+
+w, v = linalg.eig(bdHessian)
+print("Hessian:\n")
+print(bdHessian)
+# np.savetxt("bdhess_2part_split_testing.csv", bdHessian, delimiter=',')
+print("\n\nEigenvalues\n")
 print(w)
+print("\n\nEigenvectors\n")
+print(v)
+
+
+# plot_eig = np.add(pos_stable, v[0])
+
+for i in range(n*2+2):
+    fig, ax = plt.subplots()
+    for j in range(n):
+        # x = (trajectory[:][index][0+i*4])
+        # y = (trajectory[:][index][1+i*4])
+
+        x = pos_stable[0 +j*2]
+        y = pos_stable[1 +j*2]
+
+        circle = Circle((0,0), r, color="black", fill=False)
+        circle.center = [x,y]
+        ax.add_artist(circle)
+
+    xmax = length*scalef
+    ymax = len_m*scalef
+
+    ax.arrow(pos_stable[0], pos_stable[1], v[i][0+2]*3, v[i][1+2]*3, head_width=1)
+    ax.arrow(pos_stable[2], pos_stable[3], v[i][2+2]*3, v[i][3+2]*3, head_width=1)
+    # ax.arrow(pos_stable[4], pos_stable[5], v[i][4+1]*3, v[i][5+1]*3, head_width=1)
+    # ax.arrow(pos_stable[6], pos_stable[7], v[i][6+4]*3, v[i][7+4]*3, head_width=1)
+
+    # plt.plot([pos_stable[0], plot_eig[0]], [pos_stable[1], plot_eig[1]])
+    # plt.plot([pos_stable[2], plot_eig[2]], [pos_stable[3], plot_eig[3]])
+    # plt.plot([pos_stable[4], plot_eig[4]], [pos_stable[5], plot_eig[5]])
+    # plt.plot([pos_stable[6], plot_eig[6]], [pos_stable[7], plot_eig[7]])
+
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    plt.gca().set_aspect('equal', adjustable='box')
+    # plt.title("Eigenvector with eigenvalue: " + str(w[i]) + "\n" + str(v[i]))
+    plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
+    plt.figtext(.5,.9,str(v[i]),fontsize=8,ha='center')
+    plt.ylim(0,60)
+    plt.xlim(0,60)
+    # ax.title.set_position([0,-1])
+    # plt.savefig("bdhess_2part_split_testing" + str(i))
+    # plt.show()
+
+
+# plt.plot([0,v[0][0]], [0, v[0][1]])
+# plt.plot([0,v[0][2]], [0, v[0][3]])
+# plt.plot([0,v[0][4]], [0, v[0][5]])
+# plt.plot([0,v[0][6]], [0, v[0][7]])
+# plt.show()
+
 # print(linalg.eig(Hessian))
 #=====================================================
 #
