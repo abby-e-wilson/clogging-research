@@ -716,6 +716,35 @@ def plotWallForce():
     plt.show()
 
 
+def wallFrictionTorque(x, y, Fx, fy, R):
+
+    if (y <= len_m/2*scalef):
+        direction = unitVec((1, slope))
+    else:
+        direction = unitVec((1, -slope))
+
+    direction = np.array(direction)
+    force = np.array([Fx, Fy])
+
+    proj_of_force_on_wall_dir = (np.dot(force, direction))*direction
+
+    print("Smaller?", math.sqrt(Fx**2+Fy**2) <= math.sqrt(proj_of_force_on_wall_dir[0]**2+proj_of_force_on_wall_dir[1]**2))
+
+    return proj_of_force_on_wall_dir*(-R)
+
+def collisionTorque(x, y, xj, yj, Fx, Fy, R):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+    torque_dir = [unit[1], -unit[0]]
+
+    force = np.array([Fx, Fy])
+
+    proj_of_force_on_wall_dir = (np.dot(force, direction))*direction
+    torque =
+
+
 def interpolateVort(w, dx, dy, nx, ny):
     x = np.arange(0, nx, 1)
     y = np.arange(0, ny, 1)
