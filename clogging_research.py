@@ -686,6 +686,26 @@ def calcPotentialWall(x, y, slope):
 
 # Misc geometry helper functions
 
+#dimer
+def attractiveForce(xi, yi, xj, yj, R):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    f = 2*(2*R - distance)
+
+    return f*unit[0], f*unit[1]
+
+def attractivePotential(xi, yi, xj, yj, R):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    V = (2*R-distance)**2
+
+    return V
 
 # Plot the force of the wall as a function of y, calculated using the wall potential function
 
@@ -738,15 +758,17 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
         Fx_col = 0
         Fy_col = 0
         for j in range(num_parts):
+
+            xj = pos[j*4]
+            yj = pos[j*4+1]
+            vxj = pos[j*4+2]
+            vyj = pos[j*4+3]
+
             if j != i:
                 distance = math.sqrt((x-pos[j*4])**2 + (y-pos[j*4+1])**2)
 
                 #if the particles overlap
                 if (distance < 2*R):
-                    xj = pos[j*4]
-                    yj = pos[j*4+1]
-                    vxj = pos[j*4+2]
-                    vyj = pos[j*4+3]
 
                     Fx, Fy, V = calcCollision(R, x, y, xj, yj)
                     Fx_col += Fx
@@ -756,6 +778,12 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 
                     # Fx_col += Fa_x
                     # Fy_col += Fa_y
+
+
+            if j >1 and i > 1:
+                Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+                Fx_col += Fx_atr
+                Fy_col += Fy_atr
 
         #force from wall potential
         wallX = 0
@@ -989,7 +1017,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 6
+r = 3
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1013,8 +1041,8 @@ r = 6
 
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
-# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 102, pos0, u, v)
+pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+# trajectory, energy, forces, t, der = runSim(4, r, 0.1, 86, pos0, u, v)
 # ani = generateAnim(trajectory, r, n)
 # plt.show()
 #
@@ -1024,18 +1052,77 @@ r = 6
 # ani.save('clog.072920_4part_slow.mp4', writer=writer)
 
 #====================================================
+# plot system
+
+# xmax = length*scalef
+# ymax = len_m*scalef
+# X = np.linspace(0, xmax, int(length*scalef))
+# Y = np.linspace(0, ymax, int(len_m*scalef))
+# plt.xlim(0,xmax)
+# plt.ylim(0,ymax)
+#
+# plt.gca().set_aspect('equal', adjustable='box')
+# plt.grid(b=True, which='major', color='#666666', linestyle='-')
+#
+# plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+# plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+#
+# plt.show()
+
+
+# v1 = []
+# v2 = []
+# v3 = []
+# v4 = []
+# for i in velocities:
+#     # print(i)
+#     v1.append(i[0])
+#     v2.append(i[1])
+#     v3.append(i[2])
+#     v4.append(i[3])
+#
+# plt.plot(t, v1, label='particle 1')
+# plt.plot(t, v2, label='particle 2')
+# plt.plot(t, v3, label='particle 3')
+# plt.plot(t, v4, label='particle 4')
+# plt.legend()
+# # plt.plot(v4)
+# plt.xlabel('time')
+# plt.ylabel('velocity')
+# plt.title('Velocity of particles - 4 particle bridge')
+# plt.xlim(60,110)
+# plt.ylim(0,0.1)
+# plt.show()
+# fcx = []
+# fwx = []
+# ffx = []
+#
+# for i in range(len(forces)):
+#     fcx.append(forces[i][2][0])
+#     fwx.append(forces[i][1][0])
+#     ffx.append(forces[i][0][0])
+#
+# plt.plot(t, fwx, label="wall")
+# plt.plot(t, fcx, label="collision")
+# plt.plot(t, ffx, label="fluid")
+# plt.title("Forces over time on one particle")
+# plt.ylabel("Force in x direction")
+# plt.xlabel("time")
+# plt.legend()
+# plt.show()
+#====================================================
 #Hessian
 
 # fig, ax = plt.subplots()
 #
 index = 0
-n = 2
-R = 6
+n = 4
+R = 3
 
 # pos_stable = []
 # for i in range(len(t)):
 #     # print(t[i])
-#     if (t[i] >=100):
+#     if (t[i] >=82):
 #         index = i
 #         for i in range(n):
 #             x = (trajectory[:][index][0+i*4])
@@ -1052,11 +1139,23 @@ R = 6
 
 
 # pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
-dx = 30 - 21.866253691763898
-dy = 30 - 24.016367818392556
-pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
+# dx = 30 - 21.866253691763898
+# dy = 30 - 24.016367818392556
+# pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
 
+#4 part w/ adhesion
+pos_stable = [27.25614994727328, 24.28977665111323, 27.074186906158857, 35.84296840920806, 25.614383390989165, 30.041497642439364, 21.43940419613143, 25.73656411539582]
+# pos_stable = np.add(pos0,  [-7.71703685e-06,-1.69508367e-06, -1.30263585e-06,  3.35012563e-06,
+#   -4.33182367e-06,  1.38364336e-06, -1.07679818e-06,  1.66084903e-06])#,
+  # -2.38227936e-07])
 
+ #
+print(pos_stable)
+
+# pos_stable = np.add(pos0, [-2.40572434e-05,  3.98514791e-05,  2.86112269e-05,3.21857883e-05,  1.43166407e-05, -4.62163663e-05, -2.79060226e-05,-5.31628759e-05])
+# [-5.71184590e-02 -2.40572434e-01  3.98514791e-01  2.86112269e-01
+#    3.21857883e-01  1.43166407e-01 -4.62163663e-01  2.79060226e-01
+#   -5.31628759e-01]
 def Energy(pos, n, R):
 
     E = 0
@@ -1076,6 +1175,12 @@ def Energy(pos, n, R):
                     Fx, Fy, V = calcCollision(R, x, y, xj, yj)
                     E += V
                     # print(V)
+
+                # if (i==2 and j==0 or i==0 and j==2):[j*2], pos[j*2+1], R)
+                if (i==2 and j==3 or i==3 and j==2):
+                    E += attractivePotential(x, y, pos[j*2], pos[j*2+1], R)
+                # if (i==3 and j==0 or i==0 and j==3):
+                #     E += attractivePotential(x, y, pos[j*2], pos[j*2+1], R)
 
         #calculate the point on the edge of the particle which is closest to the wall
         #the edge of the particle is what matters, not the center
@@ -1098,7 +1203,7 @@ def second_deriv_E(pos, n, R, i, j, di, dj):
     pos_1_1 = pos.copy()
     pos_1_1[i] += di
     pos_1_1[j] += dj
-    print(pos[i], pos_1_1[i], di)
+    # print(pos[i], pos_1_1[i], di)
 
 
     pos_1_neg1 = pos.copy()
@@ -1139,11 +1244,12 @@ for i in range(n*2):
 # np.savetxt("hessian_diff.txt", Hessian)
 
 # BD Hessian
-xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+# xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 # bdHessian = np.zeros((n*2+1, n*2+1))
 # for i in range(n*2+1):
 #     for j in range(n*2+1):
 #         if i==0 and j%2==1:
+#             # print(i,j)
 #             Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
 #             bdHessian[i][j] = Fx
 #             bdHessian[i][j+1] = Fy
@@ -1151,8 +1257,19 @@ xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 #             Fx, Fy = calcFluidForceNonDim(pos_stable[i-1], pos_stable[i], 0, 0, xvel, yvel)
 #             bdHessian[i][j] = Fx
 #             bdHessian[i+1][j] = Fy
-#         elif i!=0 and j!=0:
-#             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
+#         # if i == 1 and j==6:
+#         #     Fx, Fy = attractiveForce(pos_stable[4], pos_stable[5], pos_stable[6], pos_stable[7], R)
+#         #     bdHessian[i][j] = Fx
+#         #     bdHessian[i][j+1] = Fy
+#         #     bdHessian[j][i] = Fx
+#         #     bdHessian[j+1][i] = Fy
+#         #     Fx, Fy = attractiveForce(pos_stable[6], pos_stable[7], pos_stable[4], pos_stable[5], R)
+#         #     bdHessian[i][j+2] = Fx
+#         #     bdHessian[i][j+3] = Fy
+#         #     bdHessian[j+2][i] = Fx
+#         #     bdHessian[j+3][i] = Fy
+#         elif i>0 and j>0:
+#             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-2, j-2, 10e-4, 10e-4)
 
 #BD Hessian - separate constraints
 xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
@@ -1174,16 +1291,26 @@ for i in range(n*3):
 w, v = linalg.eig(bdHessian)
 print("Hessian:\n")
 print(bdHessian)
-# np.savetxt("bdhess_2part_split_testing.csv", bdHessian, delimiter=',')
+# np.savetxt("bdhess_4part_dimer.csv", bdHessian, delimiter=',')
 print("\n\nEigenvalues\n")
 print(w)
 print("\n\nEigenvectors\n")
 print(v)
+energy_stable = Energy(pos_stable, n, R)
+print("Total Energy: "+str(energy_stable))
+
+
+for i in range(n*3):
+    vec = v[:,i][:-n]
+    new_pos = np.add(pos_stable, vec*10e-4)
+    energy_new = Energy(new_pos, n, R)
+
+    print("New Energy "+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(w[i]))
 
 
 # plot_eig = np.add(pos_stable, v[0])
 
-for i in range(n*2+2):
+for i in range(n*2+1):
     fig, ax = plt.subplots()
     for j in range(n):
         # x = (trajectory[:][index][0+i*4])
@@ -1199,10 +1326,10 @@ for i in range(n*2+2):
     xmax = length*scalef
     ymax = len_m*scalef
 
-    ax.arrow(pos_stable[0], pos_stable[1], v[i][0+2]*3, v[i][1+2]*3, head_width=1)
-    ax.arrow(pos_stable[2], pos_stable[3], v[i][2+2]*3, v[i][3+2]*3, head_width=1)
-    # ax.arrow(pos_stable[4], pos_stable[5], v[i][4+1]*3, v[i][5+1]*3, head_width=1)
-    # ax.arrow(pos_stable[6], pos_stable[7], v[i][6+4]*3, v[i][7+4]*3, head_width=1)
+    ax.arrow(pos_stable[0], pos_stable[1], v[i][0+1]*3, v[i][1+1]*3, head_width=1)
+    ax.arrow(pos_stable[2], pos_stable[3], v[i][2+1]*3, v[i][3+1]*3, head_width=1)
+    ax.arrow(pos_stable[4], pos_stable[5], v[i][4+1]*3, v[i][5+1]*3, head_width=1)
+    ax.arrow(pos_stable[6], pos_stable[7], v[i][6+1]*3, v[i][7+1]*3, head_width=1)
 
     # plt.plot([pos_stable[0], plot_eig[0]], [pos_stable[1], plot_eig[1]])
     # plt.plot([pos_stable[2], plot_eig[2]], [pos_stable[3], plot_eig[3]])
@@ -1218,7 +1345,8 @@ for i in range(n*2+2):
     plt.ylim(0,60)
     plt.xlim(0,60)
     # ax.title.set_position([0,-1])
-    # plt.savefig("bdhess_2part_split_testing" + str(i))
+    print("saving fig..."+str(i))
+    # plt.savefig("bdhess_4part_dimer" + str(i))
     # plt.show()
 
 
@@ -1233,63 +1361,7 @@ for i in range(n*2+2):
 #
 #
 
-#
-# xmax = length*scalef
-# ymax = len_m*scalef
-# X = np.linspace(0, xmax, int(length*scalef))
-# Y = np.linspace(0, ymax, int(len_m*scalef))
-# plt.xlim(0,xmax)
-# plt.ylim(0,ymax)
-#
-# plt.gca().set_aspect('equal', adjustable='box')
-# plt.grid(b=True, which='major', color='#666666', linestyle='-')
-#
-# plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-# plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
-#
-# plt.show()
-#
-#
-# v1 = []
-# v2 = []
-# v3 = []
-# v4 = []
-# for i in velocities:
-#     print(i)
-#     v1.append(i[0])
-#     v2.append(i[1])
-#     v3.append(i[2])
-#     v4.append(i[3])
-#
-# plt.plot(t, v1, label='particle 1')
-# plt.plot(t, v2, label='particle 2')
-# plt.plot(t, v3, label='particle 3')
-# plt.plot(t, v4, label='particle 4')
-# plt.legend()
-# # plt.plot(v4)
-# plt.xlabel('time')
-# plt.ylabel('velocity')
-# plt.title('Velocity of particles - 4 particle bridge')
-# plt.xlim(60,110)
-# plt.ylim(0,0.1)
-# plt.show()
-# fcx = []
-# fwx = []
-# ffx = []
-#
-# for i in range(len(forces)):
-#     fcx.append(forces[i][2][0])
-#     fwx.append(forces[i][1][0])
-#     ffx.append(forces[i][0][0])
-#
-# plt.plot(t, fwx, label="wall")
-# plt.plot(t, fcx, label="collision")
-# plt.plot(t, ffx, label="fluid")
-# plt.title("Forces over time on one particle")
-# plt.ylabel("Force in x direction")
-# plt.xlabel("time")
-# plt.legend()
-# plt.show()
+
 #
 #
 # stable1 = np.where(v1 == np.amin(v1))
@@ -1302,6 +1374,7 @@ for i in range(n*2+2):
 # print(stable4, np.amin(v4))
 #===Testing: adding/removing particles===
 
+#0.026550599845902603
 
 #Randomly introduce a new particle that doesn't overlap with other existing particles
 # r: radius
