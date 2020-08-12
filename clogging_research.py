@@ -1113,11 +1113,12 @@ pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 #====================================================
 #Hessian
 
-# fig, ax = plt.subplots()
-#
-index = 0
 n = 4
 R = 3
+
+#Get the stable point at a certain timestep of a simulation
+# fig, ax = plt.subplots()
+# index = 0
 
 # pos_stable = []
 # for i in range(len(t)):
@@ -1131,31 +1132,25 @@ R = 3
 #             pos_stable.append(x)
 #             pos_stable.append(y)
 # #         print(index, t[index])
-# #         circles = []
 # #
 #         break
 #
 # print(pos_stable)
 
 
+#4 particle clog -std
 pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
-dx = 30 - 21.866253691763898
-dy = 30 - 24.016367818392556
+
+#2 particle clog - symmetric
+# dx = 30 - 21.866253691763898
+# dy = 30 - 24.016367818392556
 # pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
 
 #4 part w/ adhesion
 # pos_stable = [27.25614994727328, 24.28977665111323, 27.074186906158857, 35.84296840920806, 25.614383390989165, 30.041497642439364, 21.43940419613143, 25.73656411539582]
-# pos_stable = np.add(pos0,  [-7.71703685e-06,-1.69508367e-06, -1.30263585e-06,  3.35012563e-06,
-#   -4.33182367e-06,  1.38364336e-06, -1.07679818e-06,  1.66084903e-06])#,
-  # -2.38227936e-07])
 
- #
 print(pos_stable)
 
-# pos_stable = np.add(pos0, [-2.40572434e-05,  3.98514791e-05,  2.86112269e-05,3.21857883e-05,  1.43166407e-05, -4.62163663e-05, -2.79060226e-05,-5.31628759e-05])
-# [-5.71184590e-02 -2.40572434e-01  3.98514791e-01  2.86112269e-01
-#    3.21857883e-01  1.43166407e-01 -4.62163663e-01  2.79060226e-01
-#   -5.31628759e-01]
 def Energy(pos, n, R):
 
     E = 0
@@ -1176,6 +1171,7 @@ def Energy(pos, n, R):
                     E += V
                     # print(V)
 
+                #Add attractive forces between particles
                 # if (i==2 and j==0 or i==0 and j==2):[j*2], pos[j*2+1], R)
                 # if (i==2 and j==3 or i==3 and j==2):
                 #     E += attractivePotential(x, y, pos[j*2], pos[j*2+1], R)
@@ -1216,29 +1212,27 @@ def second_deriv_E(pos, n, R, i, j, di, dj):
     pos_neg1_neg1[i] -= di
     pos_neg1_neg1[j] -= dj
 
+    #calculate the second derivative with respec to i and j
     derivE = (Energy(pos_1_1, n, R) - Energy(pos_1_neg1, n, R) - Energy(pos_neg1_1, n, R) + Energy(pos_neg1_neg1, n, R))/4/di/dj
 
-    print(i,j,derivE)
     return derivE
 
-def second_deriv_one_var(pos, n, R, i, di):
-    pos_plus = pos.copy()
-    pos_plus[i] += di
-
-    pos_neg = pos.copy()
-    pos_neg[i] -= di
-
-    derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
-
-    return derivE
+#sample 2nd der method, uneeded
+# def second_deriv_one_var(pos, n, R, i, di):
+#     pos_plus = pos.copy()
+#     pos_plus[i] += di
+#
+#     pos_neg = pos.copy()
+#     pos_neg[i] -= di
+#
+#     derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
+#
+#     return derivE
 
 Hessian = np.zeros((n*2, n*2))
 for i in range(n*2):
     for j in range(n*2):
-        # if (i == j):
-        #     Hessian[i][j] = second_deriv_one_var(pos_stable, n, R, i, 0.0001)
-        # else:
-            Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
+        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
 # np.savetxt("hessian_diff.txt", Hessian)
 
 # BD Hessian
@@ -1247,7 +1241,6 @@ bdHessian = np.zeros((n*2+1, n*2+1))
 for i in range(n*2+1):
     for j in range(n*2+1):
         if i==0 and j%2==1:
-            # print(i,j)
             Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
             bdHessian[i][j] = Fx
             bdHessian[i][j+1] = Fy
@@ -1268,7 +1261,7 @@ for i in range(n*2+1):
         #     bdHessian[j+3][i] = Fy
         elif i>0 and j>0:
             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
-            print(i,j,bdHessian[i][j])
+            # print(i,j,bdHessian[i][j])
 
 #BD Hessian - separate constraints
 # xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
@@ -1287,47 +1280,61 @@ for i in range(n*2+1):
 #         elif i>=n and j>=n:
 #             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-n, j-n, 10e-4, 10e-4)
 
+#Get Eigen values/vectors
 w, v = linalg.eig(bdHessian)
+
 print("Hessian:\n")
 print(bdHessian)
 np.savetxt("bdhess_4part_updated.csv", bdHessian, delimiter=',')
+
 print("\n\nEigenvalues\n")
 print(w)
 print("\n\nEigenvectors\n")
 print(v)
+
 energy_stable = Energy(pos_stable, n, R)
 print("Total Energy: "+str(energy_stable))
 
+# # constraints in the bd Hessian - 1 row of fluids
 constraints = 1
+
+for i in range(n*2+constraints):
+    eigvec = v[:,i][constraints:]
+    eigvalue = w[i]
+
+    new_pos = np.add(eigvec*10e-4, pos_stable)
+    energy_new = Energy(new_pos, n, R)
+
+    print("Does the energy decrease when system is shifted in direction of eigenvector?")
+    print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
+
 for i in range(n*2+constraints):
     vec = v[:,i][constraints:]
-    # print(vec)
-    steps = np.linspace(-10e-2, 10e-2, 1000)
-    # steps = [-10e-2, -10e-3,-10e-4,-10e-5,0,10e-5,10e-4,10e-3,10e-2]
+    eigvalue = w[i]
+    steps = np.linspace(-10e-3, 10e-2, 1000)
+
     energies = []
     for j in steps:
         new_pos = np.add(vec*j,pos_stable)
-        energies.append(Energy(new_pos, n, R)-energy_stable)
-    energy_new = Energy(new_pos, n, R)
+        energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
 
     plt.plot(steps, energies)
-    plt.title(str(w[i]))
-    plt.plot(steps, np.zeros((1000)))
+    plt.title("Change in energy around eigenvalue: " + str(w[i]))
+    plt.plot(steps, np.zeros((1000)))#plot a zero line
     plt.show()
 
-    print("New Energy "+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(w[i]))
-    # print(v[:,i])
-    # print(v[:,i]*w[i])
-    # print(np.dot(bdHessian, v[:,i]))
+#Test eigenvalues are correctly matched with vectors
+for i in range(n*2+constraints):
+    print("Eigenvector corresponding to "+str(w[i]))
+    print(v[:,i]*w[i])
+    print(np.dot(bdHessian, v[:,i])) #these should be equal
 
-
-# plot_eig = np.add(pos_stable, v[0])
-
+#Plot all eigenvectors
 for i in range(n*2+constraints):
     fig, ax = plt.subplots()
+
+    #plot particles
     for j in range(n):
-        # x = (trajectory[:][index][0+i*4])
-        # y = (trajectory[:][index][1+i*4])
 
         x = pos_stable[0 +j*2]
         y = pos_stable[1 +j*2]
@@ -1336,40 +1343,28 @@ for i in range(n*2+constraints):
         circle.center = [x,y]
         ax.add_artist(circle)
 
-    xmax = length*scalef
-    ymax = len_m*scalef
-
+    #plot vectors
     ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
     ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
     ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
     ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
 
-    # plt.plot([pos_stable[0], plot_eig[0]], [pos_stable[1], plot_eig[1]])
-    # plt.plot([pos_stable[2], plot_eig[2]], [pos_stable[3], plot_eig[3]])
-    # plt.plot([pos_stable[4], plot_eig[4]], [pos_stable[5], plot_eig[5]])
-    # plt.plot([pos_stable[6], plot_eig[6]], [pos_stable[7], plot_eig[7]])
-
+    #plot bd lines
+    xmax = length*scalef
+    ymax = len_m*scalef
     plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
     plt.gca().set_aspect('equal', adjustable='box')
-    # plt.title("Eigenvector with eigenvalue: " + str(w[i]) + "\n" + str(v[i]))
     plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
     plt.figtext(.5,.9,str(v[:,i]),fontsize=8,ha='center')
     plt.ylim(0,60)
     plt.xlim(0,60)
-    # ax.title.set_position([0,-1])
     print("saving fig..."+str(i))
     plt.savefig("bdhess_4part_updated" + str(i))
     # plt.show()
 
 
-# plt.plot([0,v[0][0]], [0, v[0][1]])
-# plt.plot([0,v[0][2]], [0, v[0][3]])
-# plt.plot([0,v[0][4]], [0, v[0][5]])
-# plt.plot([0,v[0][6]], [0, v[0][7]])
-# plt.show()
-
-# print(linalg.eig(Hessian))
 #=====================================================
 #
 #
