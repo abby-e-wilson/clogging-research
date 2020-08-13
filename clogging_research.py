@@ -780,10 +780,10 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     # Fy_col += Fa_y
 
 
-            if j >1 and i > 1:
-                Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
-                Fx_col += Fx_atr
-                Fy_col += Fy_atr
+            # if j >1 and i > 1:
+            #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+            #     Fx_col += Fx_atr
+            #     Fy_col += Fy_atr
 
         #force from wall potential
         wallX = 0
@@ -1017,7 +1017,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 3
+r = 6
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1041,8 +1041,8 @@ r = 3
 
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
-pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-# trajectory, energy, forces, t, der = runSim(4, r, 0.1, 86, pos0, u, v)
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 700, pos0, u, v)
 # ani = generateAnim(trajectory, r, n)
 # plt.show()
 #
@@ -1078,25 +1078,25 @@ pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 #     # print(i)
 #     v1.append(i[0])
 #     v2.append(i[1])
-#     v3.append(i[2])
-#     v4.append(i[3])
-#
+#     # v3.append(i[2])
+# #     v4.append(i[3])
+# #
 # plt.plot(t, v1, label='particle 1')
 # plt.plot(t, v2, label='particle 2')
-# plt.plot(t, v3, label='particle 3')
-# plt.plot(t, v4, label='particle 4')
+# # plt.plot(t, v3, label='particle 3')
+# # plt.plot(t, v4, label='particle 4')
 # plt.legend()
 # # plt.plot(v4)
 # plt.xlabel('time')
 # plt.ylabel('velocity')
 # plt.title('Velocity of particles - 4 particle bridge')
-# plt.xlim(60,110)
-# plt.ylim(0,0.1)
+# # plt.xlim(75,150)
+# # plt.ylim(0,0.1)
 # plt.show()
 # fcx = []
 # fwx = []
 # ffx = []
-#
+
 # for i in range(len(forces)):
 #     fcx.append(forces[i][2][0])
 #     fwx.append(forces[i][1][0])
@@ -1113,17 +1113,18 @@ pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 #====================================================
 #Hessian
 
-n = 4
-R = 3
+n = 2
+R = 6
 
 #Get the stable point at a certain timestep of a simulation
 # fig, ax = plt.subplots()
 # index = 0
-
+#
+# pos_next = []
 # pos_stable = []
 # for i in range(len(t)):
 #     # print(t[i])
-#     if (t[i] >=82):
+#     if (t[i] >=100):
 #         index = i
 #         for i in range(n):
 #             x = (trajectory[:][index][0+i*4])
@@ -1134,22 +1135,46 @@ R = 3
 # #         print(index, t[index])
 # #
 #         break
+# for i in range(len(t)):
+#     # print(t[i])
+#     if (t[i] >=450):
+#         index = i
+#         for i in range(n):
+#             x = (trajectory[:][index][0+i*4])
+#             y = (trajectory[:][index][1+i*4])
+#
+#             pos_next.append(x)
+#             pos_next.append(y)
+# #         print(index, t[index])
+# #
+#         break
 #
 # print(pos_stable)
+# print(pos_next)
 
 
 #4 particle clog -std
-pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
+# pos_next = [27.47321495344648, 24.45205662041595, 26.633047026833307, 36.17141872581759, 25.920913733889176, 30.230098526852228, 21.679938849893798, 25.988175746283222]
+# pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
 
 #2 particle clog - symmetric
 # dx = 30 - 21.866253691763898
 # dy = 30 - 24.016367818392556
 # pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
 
+#2 particle clog
+pos_stable = [21.866253691763898, 24.016367818392556, 21.866264412250516, 35.983624168376295]
+pos_next = [21.814000924460974, 23.977323175392222, 21.919122835932694, 35.94412037686787]
+
+#3 particle clog
+# pos_stable = [27.18370348898932, 24.24083953453755, 27.183709391670448, 35.75915605971447, 25.556907179942257, 29.999998633412062]
+# pos_next = [27.196120630131837, 24.250168559785475, 27.19615425637689, 35.74980634385685, 25.536484471599348, 29.999992320234476]
+
+
 #4 part w/ adhesion
 # pos_stable = [27.25614994727328, 24.28977665111323, 27.074186906158857, 35.84296840920806, 25.614383390989165, 30.041497642439364, 21.43940419613143, 25.73656411539582]
 
-print(pos_stable)
+# print(pos_stable)
 
 def Energy(pos, n, R):
 
@@ -1218,16 +1243,16 @@ def second_deriv_E(pos, n, R, i, j, di, dj):
     return derivE
 
 #sample 2nd der method, uneeded
-# def second_deriv_one_var(pos, n, R, i, di):
-#     pos_plus = pos.copy()
-#     pos_plus[i] += di
-#
-#     pos_neg = pos.copy()
-#     pos_neg[i] -= di
-#
-#     derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
-#
-#     return derivE
+def second_deriv_one_var(pos, n, R, i, di):
+    pos_plus = pos.copy()
+    pos_plus[i] += di
+
+    pos_neg = pos.copy()
+    pos_neg[i] -= di
+
+    derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
+
+    return derivE
 
 Hessian = np.zeros((n*2, n*2))
 for i in range(n*2):
@@ -1285,7 +1310,7 @@ w, v = linalg.eig(bdHessian)
 
 print("Hessian:\n")
 print(bdHessian)
-np.savetxt("bdhess_4part_updated.csv", bdHessian, delimiter=',')
+np.savetxt("bdhess_2part_updated.csv", bdHessian, delimiter=',')
 
 print("\n\nEigenvalues\n")
 print(w)
@@ -1308,20 +1333,20 @@ for i in range(n*2+constraints):
     print("Does the energy decrease when system is shifted in direction of eigenvector?")
     print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
 
-for i in range(n*2+constraints):
-    vec = v[:,i][constraints:]
-    eigvalue = w[i]
-    steps = np.linspace(-10e-3, 10e-2, 1000)
-
-    energies = []
-    for j in steps:
-        new_pos = np.add(vec*j,pos_stable)
-        energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
-
-    plt.plot(steps, energies)
-    plt.title("Change in energy around eigenvalue: " + str(w[i]))
-    plt.plot(steps, np.zeros((1000)))#plot a zero line
-    plt.show()
+# for i in range(n*2+constraints):
+#     vec = v[:,i][constraints:]
+#     eigvalue = w[i]
+#     steps = np.linspace(-10e-3, 10e-2, 1000)
+#
+#     energies = []
+#     for j in steps:
+#         new_pos = np.add(vec*j,pos_stable)
+#         energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
+#
+#     plt.plot(steps, energies)
+#     plt.title("Change in energy around eigenvalue: " + str(w[i]))
+#     plt.plot(steps, np.zeros((1000)))#plot a zero line
+#     plt.show()
 
 #Test eigenvalues are correctly matched with vectors
 for i in range(n*2+constraints):
@@ -1346,8 +1371,8 @@ for i in range(n*2+constraints):
     #plot vectors
     ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
     ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
-    ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
-    ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
+    # ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
+    # ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
 
     #plot bd lines
     xmax = length*scalef
@@ -1361,9 +1386,66 @@ for i in range(n*2+constraints):
     plt.ylim(0,60)
     plt.xlim(0,60)
     print("saving fig..."+str(i))
-    plt.savefig("bdhess_4part_updated" + str(i))
-    # plt.show()
+    plt.savefig("bdhess_2part_updated" + str(i))
+    plt.show()
 
+
+#Directional Analysis
+direction_of_motion = np.array(pos_next)-np.array(pos_stable)
+dir_motion = direction_of_motion/np.linalg.norm(direction_of_motion)
+
+print("Dir of motion: "+str(dir_motion))
+
+directional_vectors = v[1:,1:]
+print(directional_vectors)
+
+
+fig, ax = plt.subplots()
+
+#plot particles
+for j in range(n):
+
+    x = pos_stable[0 +j*2]
+    y = pos_stable[1 +j*2]
+
+    circle = Circle((0,0), R, color="black", fill=False)
+    circle.center = [x,y]
+    ax.add_artist(circle)
+
+#plot vectors
+ax.arrow(pos_stable[0], pos_stable[1], dir_motion[0], dir_motion[1], head_width=1)
+ax.arrow(pos_stable[2], pos_stable[3], dir_motion[2], dir_motion[3], head_width=1)
+# ax.arrow(pos_stable[4], pos_stable[5], dir_motion[4], dir_motion[5], head_width=1)
+# ax.arrow(pos_stable[6], pos_stable[7], dir_motion[6], dir_motion[7], head_width=1)
+
+#plot bd lines
+xmax = length*scalef
+ymax = len_m*scalef
+plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
+plt.gca().set_aspect('equal', adjustable='box')
+plt.title("Direction of Motion in Simulation")
+plt.ylim(0,60)
+plt.xlim(0,60)
+# print("saving fig..."+str(i))
+# plt.savefig("bdhess_4part_updated" + str(i))
+plt.show()
+
+coeffs = np.linalg.solve(directional_vectors, dir_motion)
+coeffs_norm = coeffs/np.linalg.norm(coeffs)
+print(coeffs)
+print(coeffs_norm)
+print(w[1:])
+labels = [str(round(i,3)) for i in w[1:]]
+
+x_pos = [i for i, _ in enumerate(coeffs_norm)]
+plt.bar(x_pos, coeffs_norm, color=['r','b','b','r'])
+plt.xticks(x_pos, labels)
+plt.title("Particle Motion Comparaison with Eigenvectors")
+plt.xlabel("Eigenvalue: red is positive, blue negative")
+plt.ylabel("Coefficient on associated eigenvector")
+plt.show()
 
 #=====================================================
 #
