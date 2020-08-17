@@ -23,32 +23,32 @@ import argparse
 # Constants
 
 #===Pipe system===
-# len_m = 300 * 10 **(-6) #radius of pipe at mouth (m) microns
-# len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
-# length = 300 * 10 ** (-6) #length of pipe
-# scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-len_m = 600
-len_c = 150
-length = 600
-scalef = 1/10
+len_m = 600 #all units here in micrometers
+len_c = 150 #um
+length = 600 #um
+scalef = 1/10 #um
 slope = (len_m-len_c)/length
 
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
-R_actual = 10 * 10**(-6)
+R_actual = 10 * 10**(-6) #micrometers
+R_graphic = 30
 
 #===Physical Constants===
-E = 10 ** 6  #start with super soft spheres
+E = (100 * 10 ** 9) * (10**(-12))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+print(E)
 poisson = 0.3
 alpha = 5/2
+
+#===Fluid Constants===
 dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
 density = 997 #kg/m^3, for water
-maxV = 0.2 #max fluid velocity
+maxV = 2 #max fluid velocity
+beta = 6 * math.pi * dyn_vis * R_actual
 
 #===Nondimentionalization Constants===
-beta = 6 * math.pi * dyn_vis * R_actual
-x0 = mass/beta
-t0 = mass/beta
+x0 = 1/beta
+t0 = 1/beta
 
 #===File OD consts===
 PATH = "/home/aw/Documents/Clogging/clogging-research/outputs/"
@@ -429,13 +429,21 @@ def getVelGrid(x, y, u, v, dx, dy):
 #dy: step in y dir
 #returns: vel functions in x and y dirs
 def interpolateVelFn(u, v, dx, dy, nx, ny):
-    x = np.arange(0, nx, 1)
-    y = np.arange(0, ny, 1)
+    x = np.arange(0, nx*dx, dx)
+    y = np.arange(0, ny*dy, dy)
 
     velX = interpolate.interp2d(x, y, u.flatten(), kind='cubic')
     velY = interpolate.interp2d(x, y, v.flatten(), kind='cubic')
 
     return velX, velY
+
+
+# streamfun = calcStreamFun(60)
+# u, v = getFluidVel(streamfun, 60,60)
+# uvel, vvel = interpolateVelFn(u, v, 10,10, 60,60)
+# x = np.linspace(0,600,1000)
+# plt.plot(x, uvel(100,x))
+# plt.show()
 
 def plotVelFun(u, v):
     velX, velY = interpolateVelFn(u, v, .1, .1, length*scalef, len_m*scalef)
@@ -543,6 +551,9 @@ def unitVec(v):
         v_unit = (0, 0)
     return v_unit
 
+
+# scalef = 1
+
 #Calculate the forces from a collision between 2 particles
 #R - radius of the particle (in proportion to the system)
 #xi, yi - position of particle 1
@@ -557,8 +568,8 @@ def calcCollision(R, xi, yi, xj, yj):
     unit = unitVec(rij)
 
     #calculate potential
-    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * ((1-distance/(2*R))**alpha)
-    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
+    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)
+    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
 
@@ -667,9 +678,14 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
     uvel = u(x, y)
     vvel = v(x, y)
 
-    Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
-    Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
+    Fx_fluid = beta * (uvel - vx )
+    Fy_fluid = beta * (vvel- vy)
+    # Fx_fluid = beta * (uvel * t0**2 /x0 - vx * t0)
+    # Fy_fluid = beta * (vvel * t0**2 /x0 - vy * t0)
+    # Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
+    # Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
 
+    # print(Fx_fluid, Fy_fluid)
     return Fx_fluid, Fy_fluid
 
 #Calculate the potential as the particle approaches a wall
@@ -679,9 +695,12 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 #returns - forces in the x and y directions
 def calcPotentialWall(x, y, slope):
     a = 50
-    V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
-    Fx = -a*slope*V
-    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
+    V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m-x*slope))))
+    Fx = -a*slope*V * 10e-6
+    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m-x*slope)))) *10e-6
+    # V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
+    # Fx = -a*slope*V
+    # Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
     return Fx, Fy, V
 
 # Misc geometry helper functions
@@ -774,26 +793,29 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
+                    # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
 
                     # Fx_col += Fa_x
                     # Fy_col += Fa_y
 
 
-            if j==0 and i==3 or j==3 and i==0:
-                Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
-                Fx_col += Fx_atr
-                Fy_col += Fy_atr
+            # if j==0 and i==3 or j==3 and i==0:
+            #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+            #     Fx_col += Fx_atr
+            #     Fy_col += Fy_atr
 
         #force from wall potential
         wallX = 0
         wallY = 0
         V_wall = 0
-        if (x <= length*scalef/2):
+        # if (x <= length*scalef/2):
+        if (x <= length/2):
             #calculate the point on the edge of the particle which is closest to the wall
             #the edge of the particle is what matters, not the center
             #this is a vector parpendicular to the wall
-            if (y <= len_m/2*scalef):
+            if (y <= len_m/2):
+            # if (y <= len_m/2*scalef):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
@@ -808,7 +830,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel):
 
         Fx_net = Fx_fluid + wallX + Fx_col
         Fy_net = Fy_fluid + wallY + Fy_col
-        ddt = ddt + [vx, vy, Fx_net, Fy_net] #TODO should the acceleration be F/m??
+        ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass] #TODO should the acceleration be F/m??
 
     derivs.append(ddt)
 
@@ -911,7 +933,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     forces = []
     times = []
     derivs = []
-    xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+    xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
 
     solver = ode(stepODE).set_integrator('lsoda', atol=2.0*10**(-12), rtol=2.0*10**(-12))
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
@@ -937,15 +959,15 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
-def generateAnim(y, r, n):
-    xmax = length*scalef
-    ymax = len_m*scalef
-    X = np.linspace(0, xmax, int(length*scalef))
-    Y = np.linspace(0, ymax, int(len_m*scalef))
+def generateAnim(y, r):
+    xmax = length
+    ymax = len_m
+    X = np.linspace(0, xmax, int(length))
+    Y = np.linspace(0, ymax, int(len_m))
 
     # streamfun = calcStreamFun(80)
-    streamfun = readVelocity()
-    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+    # streamfun = readVelocity()
+    # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
@@ -955,8 +977,10 @@ def generateAnim(y, r, n):
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
 
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    plt.plot((0, xmax/2, xmax), (ymax, (len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, (len_m-len_c)/2, 0), c="blue")
+    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
     circles = []
 
@@ -993,7 +1017,7 @@ def generateAnim(y, r, n):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
-n = int(length*scalef)
+# n = int(length*scalef)
 streamfun = calcStreamFun(60)
 # streamfun = readVelocity()
 u, v = getFluidVel(streamfun, 60, 60)
@@ -1017,7 +1041,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 3
+r = 30
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1039,12 +1063,12 @@ r = 3
 #         print("clog stable")
 #         break
 
-# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
+pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.49290466308596, 300, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 105, pos0, u, v)
-ani = generateAnim(trajectory, r, n)
+# pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 150, pos0, u, v)
+ani = generateAnim(trajectory, r)
 plt.show()
 #
 #
