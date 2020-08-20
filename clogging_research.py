@@ -32,19 +32,19 @@ slope = (len_m-len_c)/length
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
 R_actual = 10 * 10**(-6) #micrometers
-R_graphic = 30
+R = 30
 
 #===Physical Constants===
-E = (100 * 10 ** 9) * (10**(-12))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+E = (10 ** 6) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
 poisson = 0.3
 alpha = 5/2
 
 #===Fluid Constants===
-dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
+dyn_vis = 8.9 * 10 ** (-4) * 10**(-6) #dynamic viscosity (8.90 × 10−4 Pa*s for water, units of micrometers)
 density = 997 #kg/m^3, for water
 maxV = 2 #max fluid velocity
-beta = 6 * math.pi * dyn_vis * R_actual
+beta = 6 * math.pi * dyn_vis * R
 
 #===Nondimentionalization Constants===
 x0 = 1/beta
@@ -568,8 +568,8 @@ def calcCollision(R, xi, yi, xj, yj):
     unit = unitVec(rij)
 
     #calculate potential
-    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)
-    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
+    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)/10
+    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)/10
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
 
@@ -935,7 +935,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     derivs = []
     xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
 
-    solver = ode(stepODE).set_integrator('lsoda', atol=2.0*10**(-12), rtol=2.0*10**(-12))
+    solver = ode(stepODE).set_integrator('lsoda')#, atol=2.0*10**(-12), rtol=2.0*10**(-12))
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
@@ -951,8 +951,8 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 #     print(solver.get_return_code())
 
     print("finished sim...")
-    # return y, energy, forces, times, derivs
-    return y, energy, forces, t, derivs
+    return y, energy, forces, times, derivs
+    # return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
@@ -1064,10 +1064,11 @@ r = 30
 #         break
 
 pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.49290466308596, 300, 0, 0]#, 13,24,0,0]
+# pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 151, 300, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 # pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 150, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.01, 150, pos0, u, v)
 ani = generateAnim(trajectory, r)
 plt.show()
 #
@@ -1119,23 +1120,24 @@ plt.show()
 # # plt.ylim(0,0.1)
 # plt.xlim(70,104)
 # plt.show()
-# fcx = []
-# fwx = []
-# ffx = []
+fcx = []
+fwx = []
+ffx = []
 
-# for i in range(len(forces)):
-#     fcx.append(forces[i][2][0])
-#     fwx.append(forces[i][1][0])
-#     ffx.append(forces[i][0][0])
-#
+for i in range(len(forces)):
+    fcx.append(forces[i][2][0]/mass)
+    fwx.append(forces[i][1][0]/mass)
+    ffx.append(forces[i][0][0]/mass)
+
 # plt.plot(t, fwx, label="wall")
-# plt.plot(t, fcx, label="collision")
-# plt.plot(t, ffx, label="fluid")
-# plt.title("Forces over time on one particle")
-# plt.ylabel("Force in x direction")
-# plt.xlabel("time")
-# plt.legend()
-# plt.show()
+plt.plot(t, fcx, label="collision")
+plt.plot(t, ffx, label="fluid")
+plt.title("Forces over time on one particle")
+plt.ylabel("Force in x direction")
+
+plt.xlabel("time")
+plt.legend()
+plt.show()
 #====================================================
 #Hessian
 
