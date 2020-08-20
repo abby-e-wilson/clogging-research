@@ -27,6 +27,9 @@ import argparse
 # len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
+# len_m = 330
+# len_c = 60
+# length = 800
 len_m = 600
 len_c = 150
 length = 600
@@ -126,7 +129,7 @@ def getStreamFuncVals(n):
 
     for i in range(n):
         for j in range(n):
-            if (j == n-1 or j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
+            if (j == n-1 or (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i))):
                 #upper bd
                 vals[i*n+j] = 1
             elif (j<=(slope*i) and j<=(len_m*scalef-len_c*scalef-slope*i)):
@@ -283,8 +286,8 @@ def plotStreamFunWProf(streamfun, n) :
     plt.title("Streamlines of the Streamfunction")
     plt.xlabel("<---- Pipe length ---->")
     plt.ylabel("<---- Pipe Inlet ---->")
-    plt.xlim(0,60)
-    plt.ylim(0,60)
+    plt.xlim(0,80)
+    plt.ylim(0,80)
     # plt.plot(vels, x, color="white")
 
     plt.savefig("streamfun_corr_lines.png")
@@ -913,7 +916,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     derivs = []
     xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 
-    solver = ode(stepODE).set_integrator('lsoda', atol=2.0*10**(-12), rtol=2.0*10**(-12))
+    solver = ode(stepODE).set_integrator('lsoda')#, atol=2.0*10**(-12), rtol=2.0*10**(-12))
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel)
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
@@ -944,8 +947,8 @@ def generateAnim(y, r, n):
     Y = np.linspace(0, ymax, int(len_m*scalef))
 
     # streamfun = calcStreamFun(80)
-    streamfun = readVelocity()
-    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+    # streamfun = readVelocity()
+    # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
@@ -995,6 +998,8 @@ def generateAnim(y, r, n):
 # # #
 n = int(length*scalef)
 streamfun = calcStreamFun(60)
+# plotStreamFunVals(80)
+# plotStreamFunWProf(streamfun, 80)
 # streamfun = readVelocity()
 u, v = getFluidVel(streamfun, 60, 60)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
@@ -1017,7 +1022,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 3
+r = 2.5
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1042,15 +1047,16 @@ r = 3
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 105, pos0, u, v)
+pos0 = [20.3, 21, 0, 0, 21.5, 39, 0, 0, 15, 31, 0, 0, 14.9,25,0,0]
+# pos0 = [30.6,13.5,0,0,28.4,16.5,0,0,30,19.5,0,0, 27.6, 13.9, 0 ,0]
+trajectory, energy, forces, t, der = runSim(4, r, 0.1, 115, pos0, u, v)
 ani = generateAnim(trajectory, r, n)
-plt.show()
+# plt.show()
 #
 #
-# Writer = animation.writers['ffmpeg']
-# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.072920_4part_slow.mp4', writer=writer)
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+ani.save('clog.082020_4part_dimer.mp4', writer=writer)
 
 #====================================================
 # plot system
@@ -1071,30 +1077,30 @@ plt.show()
 # plt.show()
 
 
-# v1 = []
-# v2 = []
-# v3 = []
-# v4 = []
-# for i in velocities:
-#     # print(i)
-#     v1.append(i[0])
-#     v2.append(i[1])
-#     v3.append(i[2])
-#     v4.append(i[3])
-# #
-# plt.plot(t, v1, label='particle 1')
-# plt.plot(t, v2, label='particle 2')
-# plt.plot(t, v3, label='particle 3')
-# plt.plot(t, v4, label='particle 4')
-# plt.legend()
-# # plt.plot(v4)
-# plt.xlabel('time')
-# plt.ylabel('velocity')
-# plt.title('Velocity of particles - 4 particle bridge')
-# # plt.xlim(75,150)
-# # plt.ylim(0,0.1)
-# plt.xlim(70,104)
-# plt.show()
+v1 = []
+v2 = []
+v3 = []
+v4 = []
+for i in velocities:
+    # print(i)
+    v1.append(i[0])
+    v2.append(i[1])
+    v3.append(i[2])
+    v4.append(i[3])
+#
+plt.plot(t, v1, label='particle 1')
+plt.plot(t, v2, label='particle 2')
+plt.plot(t, v3, label='particle 3')
+plt.plot(t, v4, label='particle 4')
+plt.legend()
+# plt.plot(v4)
+plt.xlabel('time')
+plt.ylabel('velocity')
+plt.title('Velocity of particles - 4 particle bridge')
+# plt.xlim(75,150)
+plt.ylim(0,0.02)
+plt.xlim(70,104)
+plt.show()
 # fcx = []
 # fwx = []
 # ffx = []
@@ -1411,6 +1417,10 @@ print("Dir of motion: "+str(dir_motion))
 directional_vectors = v[1:,1:]
 print(directional_vectors)
 
+
+# plt.plot(-v[:,6][1:])
+# plt.plot(v[:,7][1:])
+# plt.show()
 
 # fig, ax = plt.subplots()
 
