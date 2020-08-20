@@ -23,34 +23,32 @@ import argparse
 # Constants
 
 #===Pipe system===
-# len_m = 300 * 10 **(-6) #radius of pipe at mouth (m) microns
-# len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
-# length = 300 * 10 ** (-6) #length of pipe
-# scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-len_m = 600
-len_c = 150
-length = 600
-scalef = 1/10
+len_m = 600 #all units here in micrometers
+len_c = 150 #um
+length = 600 #um
+scalef = 1/10 #um
 slope = (len_m-len_c)/length
 
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
-R_actual = 10 * 10**(-6)
-inertia = 2/5*mass*R_actual**2
+R = 30 #micrometers
+inertia = 2/5*mass*R**2
 
 #===Physical Constants===
-E = 10 ** 6  #start with super soft spheres
+E = (10 ** 6) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+print(E)
 poisson = 0.3
 alpha = 5/2
-dyn_vis = 8.9 * 10 ** (-4) #dynamic viscosity (8.90 × 10−4 Pa*s for water)
+
+#===Fluid Constants===
+dyn_vis = 8.9 * 10 ** (-4) * 10**(-6) #dynamic viscosity (8.90 × 10−4 Pa*s for water, units of micrometers)
 density = 997 #kg/m^3, for water
-#TODO TESTING
-maxV = 0.2 #max fluid velocity
+maxV = 2 #max fluid velocity
+beta = 6 * math.pi * dyn_vis * R
 
 #===Nondimentionalization Constants===
-beta = 6 * math.pi * dyn_vis * R_actual
-x0 = mass/beta
-t0 = mass/beta
+x0 = 1/beta
+t0 = 1/beta
 
 #===File OD consts===
 PATH = "/home/aw/Documents/Clogging/clogging-research/outputs/"
@@ -230,8 +228,8 @@ def getFluidVel(streamfun, nx, ny):
             v[i][j] = -dPsi_dx(streamfun, .1, i, j)
             mag = math.sqrt(u[i][j]**2+v[i][j]**2)
             if mag > maxval : maxval = mag
-    u = u/maxval * maxV
-    v = v/maxval * maxV
+    u = u/maxval * maxV #/ math.sqrt(2)
+    v = v/maxval * maxV#/math.sqrt(2)
     print(maxval, maxV)
     return u, v
 
@@ -286,19 +284,23 @@ def plotStreamFunWProf(streamfun, n) :
     norm = colors.BoundaryNorm(boundaries=bounds, ncolors=256)
     # plt.pcolormesh(streamfun_graph, norm=norm)
     bd = np.linspace(0,1,10)
-    plt.contour(X, Y, streamfun, levels=bd[1:-1])
+    plt.contourf(X, Y, streamfun, levels=bd)
+    plt.colorbar()
+    plt.contour(X, Y, streamfun, levels=bd[1:-1], colors='k')
     plt.gca().set_aspect('equal', adjustable='box')
 
 
     xmax = length* scalef
     ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
+    plt.fill((0, xmax/2, xmax,0), (ymax, scalef*(len_m+len_c)/2, ymax,ymax), c="white")
+    plt.fill((0, xmax/2, xmax,0), (0, scalef*(len_m-len_c)/2, 0,0), c="white")
     plt.grid(b=True, which='minor', color='#666666', linestyle='-')
     plt.title("Streamlines of the Streamfunction")
-    plt.xlabel("<--- length --->")
-    plt.ylabel("<--- Pipe Inlet --->")
-    # plt.colorbar()
+    plt.xlabel("<---- Pipe length ---->")
+    plt.ylabel("<---- Pipe Inlet ---->")
+    plt.xlim(0,60)
+    plt.ylim(0,60)
     # plt.plot(vels, x, color="white")
 
     plt.savefig("streamfun_corr_lines.png")
@@ -443,13 +445,21 @@ def getVelGrid(x, y, u, v, dx, dy):
 #dy: step in y dir
 #returns: vel functions in x and y dirs
 def interpolateVelFn(u, v, dx, dy, nx, ny):
-    x = np.arange(0, nx, 1)
-    y = np.arange(0, ny, 1)
+    x = np.arange(0, nx*dx, dx)
+    y = np.arange(0, ny*dy, dy)
 
     velX = interpolate.interp2d(x, y, u.flatten(), kind='cubic')
     velY = interpolate.interp2d(x, y, v.flatten(), kind='cubic')
 
     return velX, velY
+
+
+# streamfun = calcStreamFun(60)
+# u, v = getFluidVel(streamfun, 60,60)
+# uvel, vvel = interpolateVelFn(u, v, 10,10, 60,60)
+# x = np.linspace(0,600,1000)
+# plt.plot(x, uvel(100,x))
+# plt.show()
 
 def plotVelFun(u, v):
     velX, velY = interpolateVelFn(u, v, .1, .1, length*scalef, len_m*scalef)
@@ -505,6 +515,7 @@ def plotVelocityField(u, v, nx, ny):
     for i in range(60):
         for j in range(60):
 
+            mag[j][i] = math.sqrt(u[i][j]**2+v[i][j]**2)
             if (j == n-1 or j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i)):
                 #upper bd
                 X[i][j] = -10
@@ -517,22 +528,25 @@ def plotVelocityField(u, v, nx, ny):
                 Y[i][j] = j
                 U[i][j] = u[i][j]
                 V[i][j] = v[i][j]
-                mag[i][j] = math.sqrt(u[i][j]**2+v[i][j]**2)
             else:
                 X[i][j]=-10
 
-    # plt.pcolor(U)
+    plt.pcolor(mag)
+    plt.colorbar()
     # plt.colorbar()
     plt.quiver(X, Y, u, v, headaxislength=6,color='black')
     plt.xlim(0,60)
     plt.title("Velocity Field for Pipe with Constriction")
+    plt.xlabel("<---- Pipe length ---->")
+    plt.ylabel("<---- Pipe Inlet ---->")
     plt.gca().set_aspect('equal', adjustable='box')
 
     xmax = length* scalef
     ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
-    # plt.colorbar()
+    plt.fill((0, xmax/2, xmax,0), (ymax, scalef*(len_m+len_c)/2+1, ymax, ymax), c="white")
+    plt.fill((0, xmax/2, xmax,0), (0, scalef*(len_m-len_c)/2, 0,0), c="white")
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2+1, ymax), c="black")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="black")
     # plt.savefig("corr_velfield.png")
     plt.show()
 
@@ -553,6 +567,9 @@ def unitVec(v):
         v_unit = (0, 0)
     return v_unit
 
+
+# scalef = 1
+
 #Calculate the forces from a collision between 2 particles
 #R - radius of the particle (in proportion to the system)
 #xi, yi - position of particle 1
@@ -560,17 +577,15 @@ def unitVec(v):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
+def calcCollision(R, xi, yi, xj, yj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
     unit = unitVec(rij)
 
     #calculate potential
-    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * ((1-distance/(2*R))**alpha)
-    const = 4*E/(3*(1-poisson)**2) * math.sqrt(R_actual/2) * (-alpha/2/R)
-    dVdr =  const * (1-distance/(2*R))**(alpha-1)
-    # print(dVdr)
+    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)
+    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
 
@@ -584,7 +599,7 @@ def calcCollision(R, xi, yi, vxi, vyi, xj, yj, vxj, vyj):
 #xj, yj - position of particle 2
 #vxj, vyj - velocity of particle 2
 #returns - the force on particle i in the x and y directions and the potential
-def calcCollisionAd(R, xi, yi, xj, yj):
+def CollisionAd(R, xi, yi, xj, yj):
 
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
@@ -635,7 +650,7 @@ def plotColForceAd():
     f = []
     d = []
     for i in range(100):
-        fx, fy, v = calcCollisionAd(R, xi, yi,xj[i], yj)
+        fx, fy, v = CollisionAd(R, xi, yi,xj[i], yj)
         f.append(fx)
         d.append(v)
 
@@ -679,10 +694,19 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
     uvel = u(x, y)
     vvel = v(x, y)
 
-    Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
-    Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
+    Fx_fluid = beta * (uvel - vx )
+    Fy_fluid = beta * (vvel- vy)
+    # Fx_fluid = beta * (uvel * t0**2 /x0 - vx * t0)
+    # Fy_fluid = beta * (vvel * t0**2 /x0 - vy * t0)
+    # Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
+    # Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
 
+<<<<<<< HEAD
     return Fx_fluid[0], Fy_fluid[0]
+=======
+    # print(Fx_fluid, Fy_fluid)
+    return Fx_fluid, Fy_fluid
+>>>>>>> forces
 
 #Calculate the potential as the particle approaches a wall
 #x, y - position of particle
@@ -695,7 +719,6 @@ def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction):
     V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
     Fx = -a*slope*V
     Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
-
 
     torque = [0,0,0]
     if (abs(y-x*slope) <0.5 or abs(y-(len_m*scalef-x*slope))<0.5):
@@ -725,6 +748,26 @@ def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction):
 
 # Misc geometry helper functions
 
+#dimer
+def attractiveForce(xi, yi, xj, yj, R):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    f = 2*(2*R - distance)
+
+    return f*unit[0], f*unit[1]
+
+def attractivePotential(xi, yi, xj, yj, R):
+
+    distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
+    rij = (xi-xj, yi-yj)
+    unit = unitVec(rij)
+
+    V = (2*R-distance)**2
+
+    return V
 
 # Plot the force of the wall as a function of y, calculated using the wall potential function
 
@@ -839,6 +882,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
         #force due to fluid flow
         #TODO: testing w/o nondim
+        # Fx_fluid, Fy_fluid = calcFluidForce(x, y, vx, vy, xVel, yVel)
         Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
         # Fx_fluid, Fy_fluid = calcFluidForce(x, y, vx, vy, xVel, yVel)
 
@@ -846,6 +890,12 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         Fx_col = 0
         Fy_col = 0
         for j in range(num_parts):
+
+            xj = pos[j*4]
+            yj = pos[j*4+1]
+            vxj = pos[j*4+2]
+            vyj = pos[j*4+3]
+
             if j != i:
                 distance = math.sqrt((x-pos[j*6])**2 + (y-pos[j*6+1])**2)
 
@@ -856,10 +906,11 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     vxj = pos[j*6+2]
                     vyj = pos[j*6+3]
 
-                    Fx, Fy, V = calcCollision(R, x, y, vx,  vy, xj, yj, vxj, vyj)
+                    Fx, Fy, V = calcCollision(R, x, y, xj, yj)
                     Fx_col += Fx
                     Fy_col += Fy
                     V_col += V
+                    # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
 
                     # Fx_col += Fa_x
@@ -869,16 +920,24 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         # print(Tnet/inertia, Twall/inertia)
 
 
+            # if j==0 and i==3 or j==3 and i==0:
+            #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+            #     Fx_col += Fx_atr
+            #     Fy_col += Fy_atr
+
         #force from wall potential
         wallX = 0
         wallY = 0
         V_wall = 0
         Twall = 0
-        if (x <= length*scalef/2):
+        # if (x <= length*scalef/2):
+        if (x <= length/2):
+
             #calculate the point on the edge of the particle which is closest to the wall
             #the edge of the particle is what matters, not the center
             #this is a vector parpendicular to the wall
-            if (y <= len_m/2*scalef):
+            if (y <= len_m/2):
+            # if (y <= len_m/2*scalef):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
@@ -922,7 +981,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
         if (t<100 and T_col !=0 and i==0):
             print(T_col)
-        ddt = ddt + [vx, vy, Fx_net, Fy_net, w,T_col+Twall]# Tnet/inertia + Twall +T_col] #TODO should the acceleration be F/m??
+        ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass, w,T_col+Twall]# Tnet/inertia + Twall +T_col] #TODO should the acceleration be F/m??
 
     derivs.append(ddt)
 
@@ -1016,6 +1075,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 #          forces - forces at each timestep
 #          times - time at each iteration
 #          derives - derivatives at each timestep
+
+velocities = []
 def runSim(num_parts, r, dt, tf, pos0, u, v):
 
     print("starting sim....")
@@ -1023,7 +1084,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     forces = []
     times = []
     derivs = []
-    xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+    xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
     w = vorticity(u,v,60)
     vortx = interpolateVort(w, 1,1,60,60)
 
@@ -1035,26 +1096,31 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
         print(solver.t)
         out = solver.integrate(solver.t+dt)
         y = np.concatenate((y, [out]), axis=0)
+        vels = []
+        for i in range(num_parts):
+            vels.append([math.sqrt(out[i*4+2]**2+ out[i*4+3]**2)])
+        velocities.append(vels)
 
 #     print(solver.get_return_code())
 
     print("finished sim...")
     return y, energy, forces, times, derivs
+    # return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
-def generateAnim(y, r, n):
-    xmax = length*scalef
-    ymax = len_m*scalef
-    X = np.linspace(0, xmax, int(length*scalef))
-    Y = np.linspace(0, ymax, int(len_m*scalef))
+def generateAnim(y, r):
+    xmax = length
+    ymax = len_m
+    X = np.linspace(0, xmax, int(length))
+    Y = np.linspace(0, ymax, int(len_m))
 
     # streamfun = calcStreamFun(80)
-    streamfun = readVelocity()
-    u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
+    # streamfun = readVelocity()
+    # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
     plt.xlim(0,xmax)
@@ -1064,8 +1130,10 @@ def generateAnim(y, r, n):
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
 
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    plt.plot((0, xmax/2, xmax), (ymax, (len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, (len_m-len_c)/2, 0), c="blue")
+    # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
     scatter = ax.scatter([], [], c='red')
     circles = []
@@ -1111,7 +1179,7 @@ def generateAnim(y, r, n):
 
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
-n = int(length*scalef)
+# n = int(length*scalef)
 streamfun = calcStreamFun(60)
 # streamfun = readVelocity()
 u, v = getFluidVel(streamfun, 60, 60)
@@ -1133,13 +1201,13 @@ num_parts = 6
 # pos0 = pos0 + [15, 31, 0, 0]
 # pos0 = pos0 + [18, 35, 0, 0]
 # pos0 = pos0 + [18, 39, 0,
-pos0 = [21, 21, 0,0, 0,0]#21,39,0,0, 15,30,0,0]
+pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 3
-# trajectory, energy, forces, t, der = runSim(1, r, 0.1, 100, pos0, u, v)
+r = 30
+# trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
-xmin = 15.0
-xmax = 15.1
+# xmin = 15.0
+# xmax = 15.1
 # for i in range(25):
 #     xmid = (xmax + xmin)/2
 #     pos0 = [21, 21, 0,0, 21,39,0,0, xmid,30,0,0]
@@ -1157,7 +1225,13 @@ xmax = 15.1
 #         print("clog stable")
 #         break
 
-pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
+<<<<<<< HEAD
+pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.1, 300, 0, 0]#, 13,24,0,0]
+# pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 151, 300, 0, 0]#, 13,24,0,0]
+# print(pos0)
+# pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
+# pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
+# pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 trajectory, energy, forces, t, der = runSim(3, r, 0.1, 110, pos0, u, v)
 ani = generateAnim(trajectory, r, n)
@@ -1169,10 +1243,469 @@ plt.show()
 #
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.072320_4part.mp4', writer=writer)
+# ani.save('clog.072920_4part_slow.mp4', writer=writer)
 
+#====================================================
+# plot system
+
+# xmax = length*scalef
+# ymax = len_m*scalef
+# X = np.linspace(0, xmax, int(length*scalef))
+# Y = np.linspace(0, ymax, int(len_m*scalef))
+# plt.xlim(0,xmax)
+# plt.ylim(0,ymax)
+#
+# plt.gca().set_aspect('equal', adjustable='box')
+# plt.grid(b=True, which='major', color='#666666', linestyle='-')
+#
+# plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+# plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+#
+# plt.show()
+
+
+# v1 = []
+# v2 = []
+# v3 = []
+# v4 = []
+# for i in velocities:
+#     # print(i)
+#     v1.append(i[0])
+#     v2.append(i[1])
+#     v3.append(i[2])
+#     v4.append(i[3])
+# #
+# plt.plot(t, v1, label='particle 1')
+# plt.plot(t, v2, label='particle 2')
+# plt.plot(t, v3, label='particle 3')
+# plt.plot(t, v4, label='particle 4')
+# plt.legend()
+# # plt.plot(v4)
+# plt.xlabel('time')
+# plt.ylabel('velocity')
+# plt.title('Velocity of particles - 4 particle bridge')
+# # plt.xlim(75,150)
+# # plt.ylim(0,0.1)
+# plt.xlim(70,104)
+# plt.show()
+fcx = []
+fwx = []
+ffx = []
+
+for i in range(len(forces)):
+    fcx.append(forces[i][2][0]/mass)
+    fwx.append(forces[i][1][0]/mass)
+    ffx.append(forces[i][0][0]/mass)
+
+plt.plot(t, fwx, label="wall")
+plt.plot(t, fcx, label="collision")
+plt.plot(t, ffx, label="fluid")
+plt.title("Forces over time on one particle")
+plt.ylabel("Force in x direction")
+
+plt.xlabel("time")
+plt.legend()
+plt.show()
+#====================================================
+#Hessian
+
+n = 4
+R = 3
+
+#Get the stable point at a certain timestep of a simulation
+# fig, ax = plt.subplots()
+# index = 0
+#
+# pos_next = []
+# pos_stable = []
+# for i in range(len(t)):
+#     # print(t[i])
+#     if (t[i] >=80):
+#         index = i
+#         for i in range(n):
+#             x = (trajectory[:][index][0+i*4])
+#             y = (trajectory[:][index][1+i*4])
+#
+#             pos_stable.append(x)
+#             pos_stable.append(y)
+# #         print(index, t[index])
+# #
+#         break
+# for i in range(len(t)):
+#     # print(t[i])
+#     if (t[i] >=95):
+#         index = i
+#         for i in range(n):
+#             x = (trajectory[:][index][0+i*4])
+#             y = (trajectory[:][index][1+i*4])
+#
+#             pos_next.append(x)
+#             pos_next.append(y)
+# #         print(index, t[index])
+# #
+#         break
+#
+# print(pos_stable)
+# print(pos_next)
+
+
+#4 particle clog -std
+# pos_next = [27.47321495344648, 24.45205662041595, 26.633047026833307, 36.17141872581759, 25.920913733889176, 30.230098526852228, 21.679938849893798, 25.988175746283222]
+# pos_stable = [27.179643917021988, 24.231840291244293, 27.148660288125736, 35.7926523311934, 25.617269092372563, 30.00880906042497, 21.39192584378055, 25.747005392800148]
+
+#2 particle clog - symmetric
+# dx = 30 - 21.866253691763898
+# dy = 30 - 24.016367818392556
+# pos_stable = [30-dx, 30-dy, 30-dx, 30+dy]
+
+#2 particle clog
+# pos_stable = [21.866253691763898, 24.016367818392556, 21.866264412250516, 35.983624168376295]
+# pos_next = [21.814000924460974, 23.977323175392222, 21.919122835932694, 35.94412037686787]
+
+#3 particle clog
+# pos_stable = [27.18370348898932, 24.24083953453755, 27.183709391670448, 35.75915605971447, 25.556907179942257, 29.999998633412062]
+# pos_next = [27.196120630131837, 24.250168559785475, 27.19615425637689, 35.74980634385685, 25.536484471599348, 29.999992320234476]
+
+
+#4 part w/ adhesion
+# pos_stable = [27.25614994727328, 24.28977665111323, 27.074186906158857, 35.84296840920806, 25.614383390989165, 30.041497642439364, 21.43940419613143, 25.73656411539582]
+
+# [27.439105778236783, 24.43161444676956, 27.141569069818853, 35.79363693789873, 25.405844621435975, 30.058928711420137, 21.477554661059088, 25.09892793462067]
+# [28.1953402393687, 25.002000780955065, 27.24759917623977, 35.711602940273984, 25.098481720595018, 30.126007155968857, 22.19264795117, 24.884631859295677]
+
+# pos_stable = [27.638578337803644, 24.58332373833967, 26.884545975494998, 35.97845434964382, 25.468053167593858, 30.159830394613646, 21.70765779855862, 25.48810404421516]
+# pos_next = [28.35037978397013, 25.113614500653625, 26.530646174789098, 36.24741176600586, 25.467077286318215, 30.358075769903003, 22.35314199813014, 25.235808298669305]
+
+# pos_stable  = [27.740314471711553, 24.65219266455878, 26.846259361905695, 36.01725410392413, 25.48303406117755, 30.19247290462759, 21.798480354963758, 25.463085946698897]
+# pos_next = [28.75825875380239, 25.42099414057658, 26.391144947255693, 36.34972144072959, 25.485593677342997, 30.43291937515091, 22.766333822803787, 25.09068797113054]
+
+
+# print(pos_stable)
+
+def Energy(pos, n, R):
+
+    E = 0
+    for i in range(n):
+        x = pos[i*2+0]
+        y = pos[i*2+1]
+
+        for j in range(n):
+            if j != i:
+                distance = math.sqrt((x-pos[j*2])**2 + (y-pos[j*2+1])**2)
+
+                #if the particles overlap
+                if (distance < 2*R):
+                    xj = pos[j*2]
+                    yj = pos[j*2+1]
+
+                    Fx, Fy, V = calcCollision(R, x, y, xj, yj)
+                    E += V
+                    # print(V)
+
+                #Add attractive forces between particles
+                # if (i==2 and j==0 or i==0 and j==2):[j*2], pos[j*2+1], R)
+                # if (i==2 and j==3 or i==3 and j==2):
+                #     E += attractivePotential(x, y, pos[j*2], pos[j*2+1], R)
+                # if (i==3 and j==0 or i==0 and j==3):
+                #     E += attractivePotential(x, y, pos[j*2], pos[j*2+1], R)
+
+        #calculate the point on the edge of the particle which is closest to the wall
+        #the edge of the particle is what matters, not the center
+        #this is a vector parpendicular to the wall
+        if (y <= len_m/2*scalef):
+            direction = unitVec((-1, 1/slope))
+        else:
+            direction = unitVec((-1, -1/slope))
+        wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+        E += V_wall
+        # print(V_wall)
+
+    # print("E:  ", E)
+    return E
+
+
+def second_deriv_E(pos, n, R, i, j, di, dj):
+
+    pos_1_1 = pos.copy()
+    pos_1_1[i] += di
+    pos_1_1[j] += dj
+    # print(pos[i], pos_1_1[i], di)
+
+    pos_1_neg1 = pos.copy()
+    pos_1_neg1[i] += di
+    pos_1_neg1[j] -= dj
+
+    pos_neg1_1 = pos.copy()
+    pos_neg1_1[i] -= di
+    pos_neg1_1[j] += dj
+
+    pos_neg1_neg1 = pos.copy()
+    pos_neg1_neg1[i] -= di
+    pos_neg1_neg1[j] -= dj
+
+    #calculate the second derivative with respec to i and j
+    derivE = (Energy(pos_1_1, n, R) - Energy(pos_1_neg1, n, R) - Energy(pos_neg1_1, n, R) + Energy(pos_neg1_neg1, n, R))/4/di/dj
+
+    return derivE
+
+#sample 2nd der method, uneeded
+def second_deriv_one_var(pos, n, R, i, di):
+    pos_plus = pos.copy()
+    pos_plus[i] += di
+
+    pos_neg = pos.copy()
+    pos_neg[i] -= di
+
+    derivE = (Energy(pos_plus, n, R) - 2 * Energy(pos, n, R) + Energy(pos_neg, n, R))/di**2
+
+    return derivE
+
+Hessian = np.zeros((n*2, n*2))
+for i in range(n*2):
+    for j in range(n*2):
+        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
+# np.savetxt("hessian_diff.txt", Hessian)
+
+# BD Hessian
+xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+bdHessian = np.zeros((n*2+1, n*2+1))
+for i in range(n*2+1):
+    for j in range(n*2+1):
+        if i==0 and j%2==1:
+            Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
+            bdHessian[i][j] = Fx
+            bdHessian[i][j+1] = Fy
+        if j==0 and i%2==1 :
+            Fx, Fy = calcFluidForceNonDim(pos_stable[i-1], pos_stable[i], 0, 0, xvel, yvel)
+            bdHessian[i][j] = Fx
+            bdHessian[i+1][j] = Fy
+        # if i == 1 and j==6:
+        #     Fx, Fy = attractiveForce(pos_stable[4], pos_stable[5], pos_stable[6], pos_stable[7], R)
+        #     bdHessian[i][j] = Fx
+        #     bdHessian[i][j+1] = Fy
+        #     bdHessian[j][i] = Fx
+        #     bdHessian[j+1][i] = Fy
+        #     Fx, Fy = attractiveForce(pos_stable[6], pos_stable[7], pos_stable[4], pos_stable[5], R)
+        #     bdHessian[i][j+2] = Fx
+        #     bdHessian[i][j+3] = Fy
+        #     bdHessian[j+2][i] = Fx
+        #     bdHessian[j+3][i] = Fy
+        elif i>0 and j>0:
+            bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
+            # print(i,j,bdHessian[i][j])
+
+#BD Hessian - separate constraints
+# xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+# bdHessian = np.zeros((n*3, n*3))
+# for i in range(n*3):
+#     for j in range(n*3):
+#         if i < n and j-n==i*2:
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[j-n], pos_stable[j-n-1], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i][j+1] = Fy
+#             print("did force")
+#         if j<n and i-n==j*2:
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[i-n], pos_stable[i-n-1], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i+1][j] = Fy
+#         elif i>=n and j>=n:
+#             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-n, j-n, 10e-4, 10e-4)
+
+#Get Eigen values/vectors
+w, v = linalg.eig(bdHessian)
+
+print("Hessian:\n")
+print(bdHessian)
+# np.savetxt("bdhess_4part_dimer.csv", bdHessian, delimiter=',')
+
+print("\n\nEigenvalues\n")
+print(w)
+print("\n\nEigenvectors\n")
+print(v)
+
+energy_stable = Energy(pos_stable, n, R)
+print("Total Energy: "+str(energy_stable))
+
+# # constraints in the bd Hessian - 1 row of fluids
+constraints = 1
+
+for i in range(n*2+constraints):
+    eigvec = v[:,i][constraints:]
+    eigvalue = w[i]
+
+    new_pos = np.add(eigvec*10e-4, pos_stable)
+    energy_new = Energy(new_pos, n, R)
+
+    print("Does the energy decrease when system is shifted in direction of eigenvector?")
+    print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
+
+# for i in range(n*2+constraints):
+#     vec = v[:,i][constraints:]
+#     eigvalue = w[i]
+#     steps = np.linspace(-10e-2, 10e-2, 1000)
+#
+#     energies = []
+#     for j in steps:
+#         new_pos = np.add(vec*j,pos_stable)
+#         energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
+#
+#     plt.plot(steps, energies)
+#     plt.title("Change in energy around eigenvalue: " + str(w[i]))
+#     plt.plot(steps, np.zeros((1000)))#plot a zero line
+#     plt.show()
+
+#Test eigenvalues are correctly matched with vectors
+for i in range(n*2+constraints):
+    print("Eigenvector corresponding to "+str(w[i]))
+    print(v[:,i]*w[i])
+    print(np.dot(bdHessian, v[:,i])) #these should be equal
+
+#Plot all eigenvectors
+# for i in range(n*2+constraints):
+#     fig, ax = plt.subplots()
+#
+#     #plot particles
+#     for j in range(n):
+#
+#         x = pos_stable[0 +j*2]
+#         y = pos_stable[1 +j*2]
+#
+#         circle = Circle((0,0), R, color="black", fill=False)
+#         circle.center = [x,y]
+#         ax.add_artist(circle)
+#
+#     #plot vectors
+#     ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
+#     ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
+#     ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
+#     ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
+#
+#     #plot bd lines
+#     xmax = length*scalef
+#     ymax = len_m*scalef
+#     plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+#     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+#
+#     plt.gca().set_aspect('equal', adjustable='box')
+#     plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
+#     plt.figtext(.5,.9,str(v[:,i]),fontsize=8,ha='center')
+#     plt.ylim(0,60)
+#     plt.xlim(0,60)
+#     print("saving fig..."+str(i))
+#     plt.savefig("bdhess_4part_dimer" + str(i))
+#     plt.show()
+
+
+#Directional Analysis
+direction_of_motion = np.array(pos_next)-np.array(pos_stable)
+dir_motion = direction_of_motion/np.linalg.norm(direction_of_motion)
+
+print("Dir of motion: "+str(dir_motion))
+
+directional_vectors = v[1:,1:]
+print(directional_vectors)
+
+
+# fig, ax = plt.subplots()
+
+#plot particles
+# for j in range(n):
+#
+#     x = pos_stable[0 +j*2]
+#     y = pos_stable[1 +j*2]
+#
+#     circle = Circle((0,0), R, color="black", fill=False)
+#     circle.center = [x,y]
+#     ax.add_artist(circle)
+#
+# #plot vectors
+# ax.arrow(pos_stable[0], pos_stable[1], dir_motion[0], dir_motion[1], head_width=1)
+# ax.arrow(pos_stable[2], pos_stable[3], dir_motion[2], dir_motion[3], head_width=1)
+# ax.arrow(pos_stable[4], pos_stable[5], dir_motion[4], dir_motion[5], head_width=1)
+# ax.arrow(pos_stable[6], pos_stable[7], dir_motion[6], dir_motion[7], head_width=1)
+#
+# #plot bd lines
+# xmax = length*scalef
+# ymax = len_m*scalef
+# plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+# plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+#
+# plt.gca().set_aspect('equal', adjustable='box')
+# plt.title("Direction of Motion in Simulation")
+# plt.ylim(0,60)
+# plt.xlim(0,60)
+# # print("saving fig..."+str(i))
+# # plt.savefig("bdhess_4part_updated" + str(i))
+# plt.show()
+
+#Linear independance:
+
+# coeffs = np.linalg.solve(v[1:,1:], np.zeros((n*2)))
+# # print(v[:,1:])
+# print("linear independance: ", coeffs)
+
+# np.savetxt("eigenvec.csv", v)
+# np.savetxt("eigenvec_col7.csv", v[:,7])
+# np.savetxt("eigenvec_trimmed.csv", v[1:,1:])
+# print(v[1:,1:])
+# print(v[:,7])
+
+coeffs = np.linalg.solve(directional_vectors, direction_of_motion)
+coeffs_norm = coeffs/math.sqrt(np.dot(coeffs, coeffs)) #np.linalg.norm(coeffs)
+
+print("coeffs*vectors", np.dot(directional_vectors, coeffs))
+print(direction_of_motion)
+
+# summed_vec = np.add(np.add(np.add(v[:,6][1:]*coeffs[5], v[:,7][1:]*coeffs[6]), v[:,8][1:]*coeffs[7]), v[:,5][1:]*coeffs[4])
+# print(coeffs[5])
+# print(coeffs[6])
+# print(summed_vec)
+# plt.plot(-v[:,6][1:], label="6-pos")
+# plt.plot(v[:,7][1:], label="7-neg")
+# plt.plot(summed_vec, coeffs, label="summed")
+# plt.plot(dir_motion, label="actual")
+# plt.legend()
+# plt.show()
+
+
+print(coeffs)
+print(coeffs_norm)
+print(w[1:])
+labels = [str(round(i,3)) for i in w[1:]]
+
+x_pos = [i for i, _ in enumerate(coeffs_norm)]
+colors = []
+for i in range(n*2):
+    if (w[i+1] >0):
+        colors.append('r')
+    else:
+        colors.append('b')
+
+plt.bar(x_pos, coeffs_norm, color=colors)
+plt.xticks(x_pos, labels)
+plt.title("Particle Motion Comparaison with Eigenvectors: "+str(n)+" Particles")
+plt.xlabel("Eigenvalue: red is positive, blue negative")
+plt.ylabel("Coefficients (normalized) on associated eigenvector")
+plt.show()
+
+#=====================================================
+#
+#
+
+
+#
+#
+# stable1 = np.where(v1 == np.amin(v1))
+# print(stable1, np.amin(v1))
+# stable2 = np.where(v2 == np.amin(v2))
+# print(stable2, np.amin(v2))
+# stable3 = np.where(v3 == np.amin(v3))
+# print(stable3, np.amin(v3))
+# stable4 = np.where(v4 == np.amin(v4))
+# print(stable4, np.amin(v4))
 #===Testing: adding/removing particles===
 
+#0.026550599845902603
 
 #Randomly introduce a new particle that doesn't overlap with other existing particles
 # r: radius
