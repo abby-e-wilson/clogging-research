@@ -31,8 +31,7 @@ slope = (len_m-len_c)/length
 
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
-R_actual = 10 * 10**(-6) #micrometers
-R = 30
+R = 30 #micrometers
 
 #===Physical Constants===
 E = (10 ** 6) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
@@ -568,8 +567,8 @@ def calcCollision(R, xi, yi, xj, yj):
     unit = unitVec(rij)
 
     #calculate potential
-    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)/10
-    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)/10
+    Vij = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * ((1-distance/(2*R))**alpha)
+    dVdr = 4*E/(3*(1-poisson)**2) * math.sqrt(R/2) * (-alpha/2/R) * (1-distance/(2*R))**(alpha-1)
     Fx = - dVdr * unit[0]
     Fy = - dVdr * unit[1]
 
@@ -696,8 +695,8 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 def calcPotentialWall(x, y, slope):
     a = 50
     V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m-x*slope))))
-    Fx = -a*slope*V * 10e-6
-    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m-x*slope)))) *10e-6
+    Fx = -a*slope*V*10e-5
+    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m-x*slope))))*10e-5
     # V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
     # Fx = -a*slope*V
     # Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
@@ -1063,12 +1062,12 @@ r = 30
 #         print("clog stable")
 #         break
 
-pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.49290466308596, 300, 0, 0]#, 13,24,0,0]
+pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.1, 300, 0, 0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 151, 300, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 # pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.01, 150, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 150, pos0, u, v)
 ani = generateAnim(trajectory, r)
 plt.show()
 #
@@ -1129,7 +1128,7 @@ for i in range(len(forces)):
     fwx.append(forces[i][1][0]/mass)
     ffx.append(forces[i][0][0]/mass)
 
-# plt.plot(t, fwx, label="wall")
+plt.plot(t, fwx, label="wall")
 plt.plot(t, fcx, label="collision")
 plt.plot(t, ffx, label="fluid")
 plt.title("Forces over time on one particle")
