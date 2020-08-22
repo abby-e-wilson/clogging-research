@@ -27,17 +27,18 @@ len_m = 600 #all units here in micrometers
 len_c = 150 #um
 length = 600 #um
 scalef = 1/10 #um
+scalef_sim = 1
 slope = (len_m-len_c)/length
 
 #===Particles===
 mass = 10**(-6) # mass of particle in kg
-R = 30 #micrometers
+R = 50 #micrometers
 inertia = 2/5*mass*R**2
 
 #===Physical Constants===
 E = (10 ** 6) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
-poisson = 0.3
+poisson = 0.2
 alpha = 5/2
 
 #===Fluid Constants===
@@ -224,8 +225,8 @@ def getFluidVel(streamfun, nx, ny):
 
     for i in range(1,nx-1):
         for j in range(1,ny-1):
-            u[i][j] = dPsi_dy(streamfun, .1, i, j)
-            v[i][j] = -dPsi_dx(streamfun, .1, i, j)
+            u[i][j] = dPsi_dy(streamfun, 10, i, j)
+            v[i][j] = -dPsi_dx(streamfun, 10, i, j)
             mag = math.sqrt(u[i][j]**2+v[i][j]**2)
             if mag > maxval : maxval = mag
     u = u/maxval * maxV #/ math.sqrt(2)
@@ -237,10 +238,10 @@ def vorticity(u, v,n ):
     w = np.zeros((n,n))
     for i in range(1,n-1):
         for j in range(1,n-1):
-            w[i][j] = dPsi_dx(v,1,i,j) - dPsi_dy(u,1,i,j)
+            w[i][j] = dPsi_dx(v,10,i,j) - dPsi_dy(u,10,i,j)
 
-    plt.pcolor(w)
-    plt.colorbar()
+    # plt.pcolor(w)
+    # plt.colorbar()
     plt.show()
 
     return w
@@ -568,7 +569,7 @@ def unitVec(v):
     return v_unit
 
 
-# scalef = 1
+
 
 #Calculate the forces from a collision between 2 particles
 #R - radius of the particle (in proportion to the system)
@@ -694,19 +695,16 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
     uvel = u(x, y)
     vvel = v(x, y)
 
-    Fx_fluid = beta * (uvel - vx )
+    Fx_fluid = beta * (uvel - vx)
     Fy_fluid = beta * (vvel- vy)
     # Fx_fluid = beta * (uvel * t0**2 /x0 - vx * t0)
     # Fy_fluid = beta * (vvel * t0**2 /x0 - vy * t0)
     # Fx_fluid = beta * (uvel * t0**2 /x0 /mass - vx * t0 / mass)
     # Fy_fluid = beta * (vvel * t0**2 /x0 /mass - vy * t0 / mass)
 
-<<<<<<< HEAD
     return Fx_fluid[0], Fy_fluid[0]
-=======
     # print(Fx_fluid, Fy_fluid)
-    return Fx_fluid, Fy_fluid
->>>>>>> forces
+    # return Fx_fluid, Fy_fluid
 
 #Calculate the potential as the particle approaches a wall
 #x, y - position of particle
@@ -714,37 +712,36 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 #tau, eta - nondimentionalization constants
 #returns - forces in the x and y directions
 walltorques = []
-def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction):
-    a = 50
-    V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef-x*slope))))
-    Fx = -a*slope*V
-    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef-x*slope))))
+def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction, i, w):
+    a = 40
+    V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef_sim-x*slope))))
+    Fx = -a*slope*V*10e-6
+    Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef_sim-x*slope))))*10e-6
 
-    torque = [0,0,0]
-    if (abs(y-x*slope) <0.5 or abs(y-(len_m*scalef-x*slope))<0.5):
-        # print("wall")
-        #friction
-        if (y > 30):
-            dir = unitVec((1, slope))
-        else:
-            dir = unitVec((1, -slope))
-
-        dir = np.array(dir)
-        proj_F_on_slp = dir * float(np.dot([Fxex+Fx,Fyex+Fy], dir)) #CHECK
-
-        # torque = math.sqrt(proj_F_on_slp[0]**2+proj_F_on_slp[1]**2) * R
+    torque = 0
+    if (abs(y-x*slope) <1 or abs(y-(len_m*scalef_sim-x*slope))<1):
+        # if (abs(w)<10e-3):
+        #     # print("wall")
+        #     #friction
+        #     if (y > 300):
+        #         dir = unitVec((1, slope))
+        #     else:
+        #         dir = unitVec((1, -slope))
         #
-        # #TODO Test negation
-        # if (proj_F_on_slp[0] > 0) :
-        #     torque = -torque
-        # if (y<30):
-        #     torque = -torque
+        #     dir = np.array(dir)
+        #     proj_F_on_slp = dir * float(np.dot([Fxex+Fx,Fyex+Fy], dir)) #CHECK
+        #
+        #     torque += np.cross([Fxex+Fx, Fyex+Fy, 0], [-R*direction[0], -R*direction[1], 0])[2]
+        #
+        # else:
+        if abs(w)>0:
+            normal_force = math.sqrt(Fx**2+Fy**2)
+            torque += -w/abs(w) *normal_force *R
 
-        torque = np.cross([Fxex+Fx, Fyex+Fy, 0], [-direction[0], -direction[0], 0])
-        walltorques.append(torque[2])
+        if (i==0):
+            walltorques.append(torque)
 
-
-    return Fx, Fy, V, torque[2] #](torque - tnet)
+    return Fx, Fy, V, 0#torque
 
 # Misc geometry helper functions
 
@@ -787,7 +784,7 @@ def plotWallForce():
 
 def wallFrictionTorque(x, y, Fx, fy, R):
 
-    if (y <= len_m/2*scalef):
+    if (y <= len_m/2*scalef_sim):
         direction = unitVec((1, slope))
     else:
         direction = unitVec((1, -slope))
@@ -801,32 +798,42 @@ def wallFrictionTorque(x, y, Fx, fy, R):
 
     return proj_of_force_on_wall_dir*(-R)
 
+# https://stackoverflow.com/questions/45178528/round-to-significant-figures-in-python
+def round_sf(number, significant):
+    return round(number, significant - len(str(number)))
+
 torques = []
-def collisionTorque(R, x, y, xj, yj, Fx, Fy, w, tnet):
+def collisionTorque(R, x, y, xj, yj, Fx, Fy, w, tnet, i):
 
     rij = (x-xj, y-yj, 0)
-    unit = unitVec(rij)
+    unit = np.array(unitVec(rij))
     torque_dir = np.array([unit[1], -unit[0], 0])
 
     force = [Fx, Fy, 0]
 
-    # print(force, torque_dir)
-    proj_of_force_on_wall_dir = (np.dot(force, torque_dir))*torque_dir
-    torque = np.cross(proj_of_force_on_wall_dir, rij)[2]
-
-    #make opposite sign of angvel
-    # if (w !=0 ):
-    #     torque = -w/abs(w) * abs(torque)
+    torque = 0
+    # if (abs(w) < 10e-6):
+        # #static
+        # print("static",abs(w))
+        # # print(force, torque_dir)
+        # rad = -R*np.array(unit)
+        # proj_of_force_on_wall_dir = (np.dot(force, torque_dir))*torque_dir
+        # torque += np.cross(proj_of_force_on_wall_dir, rad)[2] - tnet
+    # else:
+    if (abs(w)>0):
+        print("kinetic")
+        # normal_force = np.dot(force[0:2], unit)*unit
+        torque += -w/abs(w) *math.sqrt(Fx**2+Fy**2)*R #math.sqrt(normal_force[0]**2+normal_force[1]**2)
 
     # print(torque)
-    if y <29:
+    if y <300 and i==0:
         torques.append(torque)
-    return torque#-tnet
+    return torque
 
 
 def interpolateVort(w, dx, dy, nx, ny):
-    x = np.arange(0, nx, 1)
-    y = np.arange(0, ny, 1)
+    x = np.arange(0, nx*dx, dx)
+    y = np.arange(0, ny*dy, dy)
 
     vorticity = interpolate.interp2d(x, y, w.flatten(), kind='cubic')
 
@@ -834,7 +841,7 @@ def interpolateVort(w, dx, dy, nx, ny):
 
 def calcHydroTorque(w, x, y, a, R):
     #TODO should r be cubed?
-    t = 8 * math.pi * dyn_vis * R_actual**3 * (w(x,y)-a)
+    t = 8 * math.pi * dyn_vis * R**3 * (w(x,y)-a)
     # print(w(x,y), x, y)
     return t
 
@@ -866,6 +873,7 @@ def calcHydroTorque(w, x, y, a, R):
 #
 #Returns: derivatives of each value of the position array
 #         [x0', y0', x0'', y0'', x1'...]
+omega = []
 def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx):
 
     ddt = []
@@ -879,6 +887,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         vy = pos[i*6+3]
         theta = pos[i*6+4]
         w = pos[i*6+5]
+        if (i==0):
+            omega.append(w)
 
         #force due to fluid flow
         #TODO: testing w/o nondim
@@ -916,35 +926,32 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     # Fx_col += Fa_x
                     # Fy_col += Fa_y
 
+                    # if j==0 and i==3 or j==3 and i==0:
+                    #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+                    #     Fx_col += Fx_atr
+                    #     Fy_col += Fy_atr
+
+
         Tnet = calcHydroTorque(vortx, x,y,w, R) #+ Twall
         # print(Tnet/inertia, Twall/inertia)
-
-
-            # if j==0 and i==3 or j==3 and i==0:
-            #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
-            #     Fx_col += Fx_atr
-            #     Fy_col += Fy_atr
 
         #force from wall potential
         wallX = 0
         wallY = 0
         V_wall = 0
         Twall = 0
-        # if (x <= length*scalef/2):
-        if (x <= length/2):
+        if (x <= length*scalef_sim/2):
+        # if (x <= length/2):
 
             #calculate the point on the edge of the particle which is closest to the wall
             #the edge of the particle is what matters, not the center
             #this is a vector parpendicular to the wall
-            if (y <= len_m/2):
-            # if (y <= len_m/2*scalef):
+            # if (y <= len_m/2):
+            if (y <= len_m/2*scalef_sim):
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
-            wallX, wallY, V_wall, Twall = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope, Fx_col+Fx_fluid, Fy_col + Fy_fluid, R, Tnet/inertia, direction)
-            # if (abs(wallX) > 0.001) :
-            #     wallX += -0.5*direction[0]
-            #     wallY += -0.5*direction[1]
+            wallX, wallY, V_wall, Twall = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope, Fx_col+Fx_fluid, Fy_col + Fy_fluid, R, Tnet, direction, i, w)
 
         #document forces
         if i == 0:
@@ -952,7 +959,6 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
         Fx_net = Fx_fluid + wallX + Fx_col
         Fy_net = Fy_fluid + wallY + Fy_col
-
 
         T_col = 0
         for j in range(num_parts):
@@ -966,22 +972,28 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     vxj = pos[j*6+2]
                     vyj = pos[j*6+3]
 
-                    T_col += collisionTorque(R, x, y, xj, yj, Fx_net, Fy_net, w, Tnet/inertia+Twall)
+                    #TODO this should be force between these two surfaces, not colition total for 3+ systems
+                    T_col += collisionTorque(R, x, y, xj, yj, Fx_col, Fy_col, w, Tnet, i)
 
-        # err = 10e-8
-        # if (T_col !=0 and Twall != 0 and abs(T_col-Twall) > err and abs(vx) <err and abs(vy) <err):
-        #     #Stuck between two surfaces! cannot move forward.
+                    # print(Tnet, Twall, T_col)
+
+        # err = 10e-6
+        # if (abs(vx) <err and abs(vy)<err and abs(T_col)>0 and (T_col+Tnet)==0):
         #     print("stuck")
-        if (t>100):
-            Fx_net = 0
-            Fy_net = 0
-            # Tnet = 0
-            # T_col = 0
+        #     Fx_net = 0
+        #     Fy_net = 0
+            # T_col =0
             # Twall = 0
+            # Tnet=0
 
-        if (t<100 and T_col !=0 and i==0):
-            print(T_col)
-        ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass, w,T_col+Twall]# Tnet/inertia + Twall +T_col] #TODO should the acceleration be F/m??
+        # if (Fx_col != 0):
+        #     Tnet = 0
+
+        # if (T_col + Tnet==0):
+            # ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass, 0,0 ]#+ Twall +T_col] #TODO should the acceleration be F/m??
+        # else:
+            # print(( T_col+Tnet)/inertia, w)
+        ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass, w, (T_col+Tnet+Twall)/inertia ]#+ Twall +T_col] #TODO should the acceleration be F/m??
 
     derivs.append(ddt)
 
@@ -1086,7 +1098,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     derivs = []
     xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
     w = vorticity(u,v,60)
-    vortx = interpolateVort(w, 1,1,60,60)
+    vortx = interpolateVort(w, 10,10,60,60)
 
     solver = ode(stepODE).set_integrator('lsoda')
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx)
@@ -1113,10 +1125,10 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 
 def generateAnim(y, r):
-    xmax = length
-    ymax = len_m
-    X = np.linspace(0, xmax, int(length))
-    Y = np.linspace(0, ymax, int(len_m))
+    xmax = length*scalef_sim
+    ymax = len_m*scalef_sim
+    X = np.linspace(0, xmax, int(length*scalef_sim))
+    Y = np.linspace(0, ymax, int(len_m*scalef_sim))
 
     # streamfun = calcStreamFun(80)
     # streamfun = readVelocity()
@@ -1130,8 +1142,8 @@ def generateAnim(y, r):
     plt.gca().set_aspect('equal', adjustable='box')
     plt.grid(b=True, which='major', color='#666666', linestyle='-')
 
-    plt.plot((0, xmax/2, xmax), (ymax, (len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, (len_m-len_c)/2, 0), c="blue")
+    plt.plot((0, xmax/2, xmax), (ymax, (len_m*scalef_sim+len_c*scalef_sim)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, (len_m*scalef_sim-len_c*scalef_sim)/2, 0), c="blue")
     # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
     # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
@@ -1203,7 +1215,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 30
+r = 50
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1225,19 +1237,24 @@ r = 30
 #         print("clog stable")
 #         break
 
-<<<<<<< HEAD
-pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 150.1, 300, 0, 0]#, 13,24,0,0]
+pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150.1, 300, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 210, 390, 0, 0, 151, 300, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
 # pos0 = [20.5, 21, 0, 0, 21.5, 39, 0, 0, 15.1, 31, 0, 0, 14.5,24.5,0,0]
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 110, pos0, u, v)
-ani = generateAnim(trajectory, r, n)
+pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
+trajectory, energy, forces, t, der = runSim(2, r, 0.1, 100, pos0, u, v)
+ani = generateAnim(trajectory, r)
 plt.show()
-plt.plot(torques)
-plt.plot(walltorques)
+plt.title("Torque")
+plt.plot(torques, label="Collision")
+plt.plot(walltorques, label="Wall")
+plt.show()
+
+plt.title("angular velocity")
+plt.plot(omega)
 plt.show()
 #
 #
