@@ -27,12 +27,12 @@ import argparse
 # len_c = 30 * 10 ** (-6) #radius of pipe at constriction (m)
 # length = 300 * 10 ** (-6) #length of pipe
 # scalef = 2 * 10**8 #scaling factor between the actual radius and the graphed radius
-# len_m = 330
-# len_c = 60
-# length = 800
-len_m = 600
-len_c = 150
-length = 600
+len_m = 330
+len_c = 60
+length = 800
+# len_m = 600
+# len_c = 150
+# length = 600
 scalef = 1/10
 slope = (len_m-len_c)/length
 
@@ -129,7 +129,7 @@ def getStreamFuncVals(n):
 
     for i in range(n):
         for j in range(n):
-            if (j == n-1 or (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i))):
+            if (j == len_m*scalef or (j>=(slope*i+ (len_c)*scalef) and j>=(len_m*scalef-slope*i))):
                 #upper bd
                 vals[i*n+j] = 1
             elif (j<=(slope*i) and j<=(len_m*scalef-len_c*scalef-slope*i)):
@@ -966,11 +966,11 @@ def generateAnim(y, r, n):
     def updateParticles_2(timestep):
 
         positions = []
-        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*5)])/4)
 
-        curr_num_parts = int(len(y[:][int(timestep*20)])/4)
+        curr_num_parts = int(len(y[:][int(timestep*5)])/4)
         for i in range(curr_num_parts):
-            positions.append((y[:][int(timestep*20)][0+i*4], y[:][int(timestep*20)][1+i*4]))
+            positions.append((y[:][int(timestep*5)][0+i*4], y[:][int(timestep*5)][1+i*4]))
 
             if (i >= len(circles)):
                 circles.append(Circle((0,0), r, color="black", fill=False))
@@ -985,7 +985,7 @@ def generateAnim(y, r, n):
         return circles,
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/20), interval=1)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/5), interval=1)
 
     return ani
 
@@ -997,11 +997,11 @@ def generateAnim(y, r, n):
 # get_ipython().run_line_magic('matplotlib', 'inline')
 # # #
 n = int(length*scalef)
-streamfun = calcStreamFun(60)
-# plotStreamFunVals(80)
-# plotStreamFunWProf(streamfun, 80)
+streamfun = calcStreamFun(80)
+plotStreamFunVals(80)
+plotStreamFunWProf(streamfun, 80)
 # streamfun = readVelocity()
-u, v = getFluidVel(streamfun, 60, 60)
+u, v = getFluidVel(streamfun, 80, 33)
 # #format: x_i, y_i, vx_i, vy_i, x_i+1...
 # pos0 = []
 num_parts = 6
@@ -1022,7 +1022,8 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 2.5
+# r = 2.5
+r=1.1
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1047,16 +1048,16 @@ r = 2.5
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [21, 21, 0, 0, 21, 39, 0, 0, 15.049290466308596, 30, 0, 0, 13,24,0,0]
-pos0 = [20.3, 21, 0, 0, 21.5, 39, 0, 0, 15, 31, 0, 0, 14.9,25,0,0]
-# pos0 = [30.6,13.5,0,0,28.4,16.5,0,0,30,19.5,0,0, 27.6, 13.9, 0 ,0]
-trajectory, energy, forces, t, der = runSim(4, r, 0.1, 115, pos0, u, v)
+# pos0 = [20.3, 21, 0, 0, 21.5, 39, 0, 0, 15, 31, 0, 0, 14.9,25,0,0]
+pos0 = [30.6,13.5,0,0,28.4,16.5,0,0,30,19.5,0,0, 27.6, 13.9, 0 ,0]
+trajectory, energy, forces, t, der = runSim(4, r, 0.1, 120, pos0, u, v)
 ani = generateAnim(trajectory, r, n)
 # plt.show()
 #
 #
 Writer = animation.writers['ffmpeg']
 writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-ani.save('clog.082020_4part_dimer.mp4', writer=writer)
+ani.save('clog.082120_4part_dimer.mp4', writer=writer)
 
 #====================================================
 # plot system
