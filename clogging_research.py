@@ -584,7 +584,7 @@ svector = []
 unittan = []
 friction_options = []
 overlapN = []
-def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, ci, cj, dt, wi, wj):
+def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, wj):
 
     #Basic vectors
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
@@ -616,37 +616,48 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, ci, cj, dt, wi, wj):
     # overlap_n = (2*R - distance)
 
     #Normal coefficients
-    er = 0.5 # coefficent of resitution
+    er = 1 # coefficent of resitution
     damping_coeff = -2 * math.sqrt(5/6) * np.log(er)/math.sqrt(np.log(er)**2 + math.pi**2)
     kn = 4/3*E_eff*math.sqrt(r_eff*overlap_n)
     yn = damping_coeff * math.sqrt(2/3*kn*m_eff)
 
     #Hertz-Mindlin contact Model
-    Fn = (kn* overlap_n - yn*np.dot(relvel, S))*10e-3
+    Fn = (kn* overlap_n - yn*np.dot(relvel, S))
     Fx = -Fn * nij[0] #negative because the force is opposite the normal vector,
     Fy = -Fn * nij[1] #it points into the particle
 
     # tangential overlap
-    contact_orig = np.array([ci, cj]) #original point of contact on this particle
-    contact_updated = contact_orig + veli*dt #update position of point if particle moved
-    disp_t = np.array([xi + ri[0], yi + ri[1]]) - contact_updated
-    overlap_t = np.dot(disp_t, S)
+    # contact_orig = np.array([ci, cj]) #original point of contact on this particle
+    # contact_updated = contact_orig + veli*dt #update position of point if particle moved
+    # disp_t = np.array([xi + ri[0], yi + ri[1]]) - contact_updated
+    # overlap_t = np.dot(disp_t, S)
+
+    dispi_curr = np.dot(veli,tij)*dt + dispi
+    # dispi_curr = np.dot([vxi, vyi], tij)*dt +dispi
+    # dispj_curr = -np.dot([vxj, vyj],S) * dt + dispj
+    overlap_t = abs(dispi_curr+dispj)
+
+#new?
+    dispi_curr = np.dot([vxi +angveli[0], vyi+angveli[1]],tij) * dt + dispi
+    # dispj_curr = -np.dot([vxj, vyj],S) * dt + dispj
+    overlap_t = abs(dispi_curr+dispj)
 
     #tangential coefficients
     kt = 8 * G_eff * math.sqrt(r_eff*overlap_n)
     yt = damping_coeff *  math.sqrt(kt*m_eff)
-    coeff_friction = 0.2
+    coeff_friction = 0.1
 
     #tangential force
     magFt = -min(coeff_friction*abs(Fn), kt*overlap_t)# - yt*np.dot(relvel, S))
     Ft = magFt*S
-    print(Ft)
+    Ft = 0 * S
+    # print(Ft)
 
     #TODO SIGN ERROR HERE
-    torque = np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
+    torque = -np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
 
     if (yi<290):
-        friction_options.append([0.2*abs(Fn), kt*overlap_t, magFt])
+        friction_options.append([coeff_friction*abs(Fn), kt*overlap_t, magFt])
         relvelocity.append(relvel)
         unittan.append(tij)
         relative_angle = np.arccos(np.dot(unit_angvel[0:2], tij))
@@ -656,7 +667,15 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, ci, cj, dt, wi, wj):
     # TODO update
     Vij = 0
 
-    return Fx, Fy,Ft[0],Ft[1],0,0,contact_updated#Ft[0],Ft[1], Vij, torque, contact_updated
+
+    coeff_rolling = 0.01
+    rolling_torque = 0
+    if (wi != 0):
+        rolling_torque = -wi * coeff_rolling * abs(Fn) * R#/MODIFIED - ok?
+
+    torque += rolling_torque
+
+    return Fx, Fy,Ft[0],Ft[1],0,torque, dispi_curr#contact_updated#Ft[0],Ft[1], Vij, torque, contact_updated
 
 
 #Calculate the forces from a collision between 2 particles
@@ -990,14 +1009,15 @@ def calcHydroTorque(w, x, y, a, R):
 #Returns: derivatives of each value of the position array
 #         [x0', y0', x0'', y0'', x1'...]
 omega = []
-tdisp = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+# tdisp = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+tdisp = [[0,0,0],[0,0,0],[0,0,0]]
 tlast = 0
 collision_friction = [[0,0],[0,0],[0,0]]
 def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx):
 
     global tlast
     global tdisp
-    print(tlast)
+    # print(tlast)
     ddt = []
     V_col = 0
     times.append(t)
@@ -1042,20 +1062,20 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     vyj = pos[j*6+3]
                     wj = pos[j*6+5]
 
-                    if (tdisp[i][j*2] == 0):
-                        r = [xj - x, yj-y]
-                        tdisp[i][j*2] = x + r[0]/2
-                        tdisp[i][j*2] = y + r[1]/2
+                    # if (tdisp[i][j*2] == 0):
+                    #     r = [xj - x, yj-y]
+                    #     tdisp[i][j*2] = x + r[0]/2
+                    #     tdisp[i][j*2] = y + r[1]/2
 
-                    Fx, Fy, fricx, fricy, V, col_torque, newdisp = calcCollision(R, x, y, xj, yj, vx, vy, vxj, vyj, tdisp[i][j*2], tdisp[i][j*2+1], t-tlast, w, wj)
+                    Fx, Fy, fricx, fricy, V, col_torque, newdisp = calcCollision(R, x, y, xj, yj, vx, vy, vxj, vyj, tdisp[i][j], tdisp[j][i], t-tlast, w, wj)
                     Fx_col += Fx+fricx
                     Fy_col += Fy+fricy
                     fricx_tot += fricx
                     fricy_tot += fricy
                     V_col += V
                     Tnet += col_torque
-                    tdisp[i][j*2] = newdisp[0]
-                    tdisp[i][j*2+1] = newdisp[1]
+                    tdisp[i][j] = newdisp
+                    # tdisp[i][j*2+1] = newdisp[1]
                     # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
 
@@ -1071,8 +1091,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                 else:
                     #reset displacement
                     # print("reset")
-                    tdisp[i][j*2] = 0
-                    tdisp[i][j*2+1] = 0
+                    tdisp[i][j] = 0
+                    # tdisp[i][j*2+1] = 0
 
                 if (i==0 and j ==2):
                     print("displacecment", tdisp[i][j], tdisp[j][i])
@@ -1283,8 +1303,8 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 #     print(solver.get_return_code())
 
     print("finished sim...")
-    # return y, energy, forces, times, derivs
-    return y, energy, forces, t, derivs
+    return y, energy, forces, times, derivs
+    # return y, energy, forces, t, derivs
 
 
 # Animate the trajectories of the particles
@@ -1430,29 +1450,29 @@ pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 100, pos0, u, v)
-# ani = generateAnim(trajectory, r, np.array(graphic_fric))
-# plt.show()
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 105, pos0, u, v)
+ani = generateAnim(trajectory, r, np.array(graphic_fric))
+plt.show()
 
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 # ani.save('clog.082820_3part_friction2.mp4', writer=writer)
+#
+# x1 = [trajectory[:][i][i] for i in range(len(t))]
+# x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
+# x3 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
+# plt.plot(t, x1)
+# plt.plot(x2)
+# plt.plot(x3)
+# plt.title("x pos")
+# plt.show()
+#
 
-x1 = [trajectory[:][i][i] for i in range(len(t))]
-x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
-x3 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
-plt.plot(t, x1)
-plt.plot(x2)
-plt.plot(x3)
-plt.title("x pos")
-plt.show()
-
-
-plt.plot(t, trajectory[:][:][1])
-plt.plot(t, trajectory[:][:][3])
-plt.plot(t, trajectory[:][:][5])
-plt.title("y pos")
-plt.show()
+# plt.plot(t, trajectory[:][:][1])
+# plt.plot(t, trajectory[:][:][3])
+# plt.plot(t, trajectory[:][:][5])
+# plt.title("y pos")
+# plt.show()
 
 graphic_fric = np.array(graphic_fric)
 print(graphic_fric[:,0])
@@ -1469,7 +1489,8 @@ plt.title("friction options")
 plt.plot(np.array(friction_options)[:,0], label="kinetic")
 plt.plot(np.array(friction_options)[:,1], label="static")
 plt.plot(np.array(friction_options)[:,2], label="mag")
-# plt.ylim(-2*10e-8,2*10e-8)
+max = max(np.array(friction_options)[:,0])
+plt.ylim(-max, max)
 plt.legend()
 plt.show()
 plt.title("angular velocity")
@@ -1550,7 +1571,7 @@ plt.plot(t, fcx, label="collision")
 plt.plot(t, ffx, label="fluid")
 plt.title("Forces over time on one particle")
 plt.ylabel("Force in x direction")
-plt.ylim(-100,100)
+# plt.ylim(-100,100)
 
 plt.xlabel("time")
 plt.legend()
