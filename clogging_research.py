@@ -26,6 +26,11 @@ import argparse
 len_m = 600 #all units here in micrometers
 len_c = 150 #um
 length = 600 #um
+
+# len_m = 100
+# len_c = 100
+# length = 100
+
 scalef = 1/10 #um
 scalef_sim = 1
 slope = (len_m-len_c)/length
@@ -584,8 +589,11 @@ svector = []
 unittan = []
 friction_options = []
 overlapN = []
+coltorques = [[0,0]]
 def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, wj):
 
+    global coltorques
+    # print("collision")
     #Basic vectors
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     nij = np.array(unitVec([xj-xi, yj-yi]))
@@ -608,7 +616,10 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
     velj = np.array([vxj + angvelj[0], vyj + angvelj[1]])
 
     relvel = velj - veli
-    unit_angvel = relvel/np.linalg.norm(relvel)
+    if (np.linalg.norm(relvel) != 0):
+        unit_angvel = relvel/np.linalg.norm(relvel)
+    else:
+        unit_angvel = [0,0]
     S = np.array(unitVec(np.dot(relvel, tij) * tij)) #Unit vec in tang plane in dir of relative velocity
 
     #normal overlap
@@ -627,54 +638,50 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
     Fy = -Fn * nij[1] #it points into the particle
 
     # tangential overlap
-    # contact_orig = np.array([ci, cj]) #original point of contact on this particle
-    # contact_updated = contact_orig + veli*dt #update position of point if particle moved
-    # disp_t = np.array([xi + ri[0], yi + ri[1]]) - contact_updated
-    # overlap_t = np.dot(disp_t, S)
-
-    dispi_curr = np.dot(veli,tij)*dt + dispi
-    # dispi_curr = np.dot([vxi, vyi], tij)*dt +dispi
-    # dispj_curr = -np.dot([vxj, vyj],S) * dt + dispj
-    overlap_t = abs(dispi_curr+dispj)
-
-#new?
-    dispi_curr = np.dot([vxi +angveli[0], vyi+angveli[1]],tij) * dt + dispi
-    # dispj_curr = -np.dot([vxj, vyj],S) * dt + dispj
+    dispi_curr = np.dot([veli[0], veli[1]], tij) * dt + dispi
+    # print("collision - ",dispi_curr)
     overlap_t = abs(dispi_curr+dispj)
 
     #tangential coefficients
     kt = 8 * G_eff * math.sqrt(r_eff*overlap_n)
     yt = damping_coeff *  math.sqrt(kt*m_eff)
-    coeff_friction = 0.1
+    coeff_friction = 0.2
 
     #tangential force
     magFt = -min(coeff_friction*abs(Fn), kt*overlap_t)# - yt*np.dot(relvel, S))
     Ft = magFt*S
-    Ft = 0 * S
+    # Ft = 0 * S
     # print(Ft)
 
     #TODO SIGN ERROR HERE
     torque = -np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
 
-    if (yi<290):
-        friction_options.append([coeff_friction*abs(Fn), kt*overlap_t, magFt])
-        relvelocity.append(relvel)
-        unittan.append(tij)
-        relative_angle = np.arccos(np.dot(unit_angvel[0:2], tij))
-        svector.append(relative_angle)
-        overlapN.append(overlap_n)
+    # if (yi<290):
+    #     friction_options.append([coeff_friction*abs(Fn), kt*overlap_t, magFt])
+    #     relvelocity.append(relvel)
+    #     unittan.append(tij)
+    #     relative_angle = np.arccos(np.dot(unit_angvel[0:2], tij))
+    #     svector.append(relative_angle)
+    #     overlapN.append(overlap_n)
 
     # TODO update
     Vij = 0
-
 
     coeff_rolling = 0.01
     rolling_torque = 0
     if (wi != 0):
         rolling_torque = -wi * coeff_rolling * abs(Fn) * R#/MODIFIED - ok?
 
+    if (yi<290):
+        # print("col")
+        # if(walltorques == None):
+        #     walltorques = []
+        coltorques = np.concatenate((coltorques, np.array([[torque, rolling_torque]])))
+
     torque += rolling_torque
 
+    # Ft = [0,0]
+    # torque = 0
     return Fx, Fy,Ft[0],Ft[1],0,torque, dispi_curr#contact_updated#Ft[0],Ft[1], Vij, torque, contact_updated
 
 
@@ -690,6 +697,7 @@ def CollisionAd(R, xi, yi, xj, yj):
     distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
     rij = (xi-xj, yi-yj)
     unit = unitVec(rij)
+    print("collision")
 
     # a0 = (9*math.pi*R**2/E)**(1/9)
     # a0=0.01*R
@@ -713,7 +721,7 @@ def CollisionAd(R, xi, yi, xj, yj):
 
     Reff = R/2 # 1/Reff = 1/R1 + 1/R2 but R1=R2 here
     deformation = (2*R - distance)/2
-    print(deformation, a0, deformation)
+    # print(deformation, a0, deformation)
     a = math.sqrt(Reff * deformation)
 
     Fn = 4*Fc *((a/a0)**3-(a/a0)**(3/2))
@@ -796,88 +804,122 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 #slope - slope of the wall
 #tau, eta - nondimentionalization constants
 #returns - forces in the x and y directions
-walltorques = []
+walltorques = np.array([[0,0]])
 walldisp = [0,0,0]
 def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction, i, w, vx, vy, disp, dt):
+    global walltorques
+
     a = 50
     V = (math.e ** (-a*(y-x*slope)) + math.e **(a*(y-(len_m*scalef_sim-x*slope))))
     Fx = -a*slope*V*10e-6
     Fy=  a*(math.e ** (-a*(y-x*slope)) - math.e **(a*(y-(len_m*scalef_sim-x*slope))))*10e-6
+    Fn = math.sqrt(Fx**2 + Fy**2)
 
-    # torque = 0
-    # if (abs(y-x*slope) <1 or abs(y-(len_m*scalef_sim-x*slope))<1):
-    #     if (abs(w)<10e-4):
-    #         # print("wall")
-    #         #friction
-    #         if (y > 300):
-    #             dir = unitVec((1, slope))
-    #         else:
-    #             dir = unitVec((1, -slope))
-    #
-    #         dir = np.array(dir)
-    #         proj_F_on_slp = dir * float(np.dot([Fxex+Fx,Fyex+Fy], dir)) #CHECK
-    #
-    #         torque += np.cross([Fxex+Fx, Fyex+Fy, 0], [-R*direction[0], -R*direction[1], 0])[2]
-    #     #
-    #     # else:
-    #     if abs(w)>0:
-    #         normal_force = math.sqrt(Fx**2+Fy**2)
-    #         torque += -w/abs(w) *normal_force *R
-    #
-    #     if (i==0):
-    #         walltorques.append(torque)
+    m1 = slope
+    m2 = -slope
+    b1 = 0
+    b2 = len_m
+    d1 = abs((b1+m1*x-y)/math.sqrt(1+m1**2))
+    d2 = abs((b2+m2*x-y)/math.sqrt(1+m2**2))
+    distance = min(d1, d2)
 
+    #Basic vectors
+    nij = -np.array(direction)
+    tij = np.array(unitVec([nij[1], -nij[0]]))
 
+    #effective values across both particles
+    r_eff = R
+    m_eff = mass
+    E_eff = E/2/(1-poisson**2)
+    G_eff = E_eff/4/(2+poisson)/(1-poisson)
 
-    #
-    #
-    # #tangential force
-    # # distance = math.sqrt((xi-xj)**2+(yi-yj)**2)
-    # nij = np.array(unitVec([-direction[0], -direction[1]]))
-    # tij = np.array(unitVec([nij[1], -nij[0]]))
-    #
-    # distance = slope*x -y
-    # if (y> 300):
-    #     # print(x,y)
-    #     distance += len_m
-    # overlap_n = 0- distance
-    #
-    #
-    # wi_vec = [0,0,w]
-    # ri = [R*nij[0], R*nij[1], 0]
-    # angveli = np.cross(wi_vec,ri)
-    # relvel = [0-vx-angveli[0], 0-vy-angveli[1]]
-    # unit_angvel = relvel/np.linalg.norm(relvel)
-    # S = np.array(unitVec(np.dot(relvel, tij) * tij)) #Unit vec in tang plane in dir of relative velocity
-    # # if (yi < 290):
-    # #     relvelocity.append(relvel)
-    # #     unittan.append(tij)
-    # #     relative_angle = np.arccos(np.dot(unit_angvel[0:2], tij))
-    # #     svector.append(relative_angle)
-    #
-    Ft = [0,0]
-    overlap_t = 0
+    #Relative velocity calculation
+    wi_vec = [0,0,w]
+    ri = [R*nij[0], R*nij[1], 0]
+    angveli = np.cross(wi_vec, ri)
+    # print(w, angveli)
+    veli = np.array([vx + angveli[0], vy + angveli[1]])
+
+    relvel = -1*veli
+    if (np.linalg.norm(relvel) != 0):
+        unit_angvel = relvel/np.linalg.norm(relvel)
+    else:
+        unit_angvel = [0,0]
+    S = np.array(unitVec(np.dot(relvel, tij) * tij)) #Unit vec in tang plane in dir of relative velocity
+    # print(S)
+    #normal overlap
+    overlap_n = (R-distance)
+    overlap_n = (0.5 - distance)
+    # overlap_n = (2*R - distance)
+
     torque = 0
-    # # if (overlap_n<0.11 and y < 300) or (overlap_n >0.11 and y>300) :
-    #     # print ("overlap" , overlap_n, x, y, R)
-    #
-    # overlap_n = abs(overlap_n)
-    # overlap_t = np.dot([vx, vy],tij) * dt + disp
-    #
-    # er = 1 # coefficent of resitution
-    # G = E/4/(2+poisson)/(1-poisson)
-    # kt = 8 * G * math.sqrt(R*overlap_n)
-    # yt = -2 * math.sqrt(5/6) * math.sqrt(kt*mass) * np.log(er)/math.sqrt(np.log(er)**2 + math.pi**2)
-    #
-    # forcenet = math.sqrt(Fx**2 + Fy**2)
-    # Ft = -min(0.002*forcenet, kt*overlap_t - yt*math.sqrt(relvel[0]**2+relvel[1]**2)) * S
-    #
-    # # torque = -np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
-    # # if (i==0):
-    # print("wall torque ", torque, Ft)
+    dispi_curr = 0
+    Ft = [0,0]
+    # Fx = 0
+    # Fy = 0
+    # print(overlap_n)
+    if (overlap_n >= 0):
+    #     #Normal coefficients
+        er = 1 # coefficent of resitution
+        damping_coeff = -2 * math.sqrt(5/6) * np.log(er)/math.sqrt(np.log(er)**2 + math.pi**2)
+        kn = 4/3*E_eff*math.sqrt(r_eff*overlap_n)
+        yn = damping_coeff * math.sqrt(2/3*kn*m_eff)
 
-    return Fx+Ft[0], Fy+Ft[1], V, torque, overlap_t#torque
-    # return Fx, Fy, V, 0, overlap_t
+        #Hertz-Mindlin contact Model
+        # Fn = (kn* overlap_n - yn*np.dot(relvel, S))
+        # Fx += -Fn * nij[0] #negative because the force is opposite the normal vector,
+        # Fy += -Fn * nij[1] #it points into the particle
+    #
+        # tangential overlap
+        # if (distance < 1):
+        # print(veli, tij)
+        dispi_curr = np.dot([veli[0], veli[1]], tij) * dt + disp
+        # print(dispi_curr)
+        overlap_t = abs(dispi_curr)
+        # else:
+            # overlap_t = 0
+
+        #tangential coefficients
+        kt = 8 * G_eff * math.sqrt(r_eff*overlap_n)
+        yt = damping_coeff *  math.sqrt(kt*m_eff)
+        coeff_friction = 0.2
+
+        #tangential force
+        magFt = -min(coeff_friction*abs(Fn), kt*overlap_t)# - yt*np.dot(relvel, S))
+        Ft = magFt*S
+        # print(magFt)
+
+        #TODO SIGN ERROR HERE
+        torque = -np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
+
+        if (y<290):
+            # print(S, relvel[0])
+            friction_options.append([coeff_friction*abs(Fn), kt*overlap_t, overlap_t])
+            relvelocity.append(relvel)
+            unittan.append(tij)
+            # relative_angle = np.arccos(np.dot(unit_angvel[0:2], tij))
+            # svector.append(relative_angle)
+            overlapN.append(overlap_n)
+            total_disp.append(overlap_t)
+
+        coeff_rolling = 0.01
+        rolling_torque = 0
+        if (w != 0):
+            rolling_torque = -w/abs(w) * coeff_rolling * abs(Fn) * R#/MODIFIED - ok?
+            # print(w, rolling_torque, torque)
+        if (y<290):
+            # print("wall")
+            # if(walltorques == None):
+            #     walltorques = []
+            walltorques = np.concatenate((walltorques, np.array([[torque, rolling_torque]])))
+        torque += rolling_torque
+
+    V = 0
+    # Ft = [0,0]
+    # torque = 0
+    # print(Ft)
+    return Fx, Fy, Ft[0], Ft[1], V, torque, dispi_curr#torque
+    # return Fx, Fy, V, 0, dispi_curr
 
 # Misc geometry helper functions
 
@@ -1017,6 +1059,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
     global tlast
     global tdisp
+    # global walldisp
     # print(tlast)
     ddt = []
     V_col = 0
@@ -1046,11 +1089,6 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         Tnet = 0
         for j in range(num_parts):
 
-            xj = pos[j*4]
-            yj = pos[j*4+1]
-            vxj = pos[j*4+2]
-            vyj = pos[j*4+3]
-
             if j != i:
                 distance = math.sqrt((x-pos[j*6])**2 + (y-pos[j*6+1])**2)
 
@@ -1068,8 +1106,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     #     tdisp[i][j*2] = y + r[1]/2
 
                     Fx, Fy, fricx, fricy, V, col_torque, newdisp = calcCollision(R, x, y, xj, yj, vx, vy, vxj, vyj, tdisp[i][j], tdisp[j][i], t-tlast, w, wj)
-                    Fx_col += Fx+fricx
-                    Fy_col += Fy+fricy
+                    Fx_col += Fx
+                    Fy_col += Fy
                     fricx_tot += fricx
                     fricy_tot += fricy
                     V_col += V
@@ -1094,17 +1132,19 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     tdisp[i][j] = 0
                     # tdisp[i][j*2+1] = 0
 
-                if (i==0 and j ==2):
-                    print("displacecment", tdisp[i][j], tdisp[j][i])
-                    total_disp.append(abs(tdisp[i][j]+tdisp[j][i]))
+                # if (i==0 and j ==2):
+                #     print("displacecment", tdisp[i][j], tdisp[j][i])
+                #     total_disp.append(abs(tdisp[i][j]+tdisp[j][i]))
 
 
-        # Tnet = calcHydroTorque(vortx, x,y,w, R) #+ Twall
+        # Tnet += calcHydroTorque(vortx, x,y,w, R) #+ Twall
         # print(Tnet/inertia, Twall/inertia)
 
         #force from wall potential
         wallX = 0
         wallY = 0
+        wfx = 0
+        wfy = 0
         V_wall = 0
         Twall = 0
         if (x <= length*scalef_sim/2):
@@ -1118,7 +1158,9 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                 direction = unitVec((-1, 1/slope))
             else:
                 direction = unitVec((-1, -1/slope))
-            wallX, wallY, V_wall, Twall, newwalldisp = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope, Fx_col+Fx_fluid, Fy_col + Fy_fluid, R, Tnet, direction, i, w, vx, vy, walldisp[i], t-tlast)
+            wallX, wallY, wfx, wfy, V_wall, Twall, newwalldisp = calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope, Fx_col+Fx_fluid, Fy_col + Fy_fluid, R, Tnet, direction, i, w, vx, vy, walldisp[i], t-tlast)
+            #actual x, y - not nearest point
+            # wallX, wallY, wfx, wfy, V_wall, Twall, newwalldisp = calcPotentialWall(x, y, slope, Fx_col+Fx_fluid, Fy_col + Fy_fluid, R, Tnet, direction, i, w, vx, vy, walldisp[i], t-tlast)
 
             walldisp[i] = newwalldisp
             Tnet += Twall
@@ -1126,10 +1168,10 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         collision_friction[i] = [fricx_tot, fricy_tot]
         #document forces
         if i == 0:
-            forces.append([[Fx_fluid, Fy_fluid], [wallX, wallY],[Fx_col, Fy_col]])
+            forces.append([[Fx_fluid, Fy_fluid], [wallX, wallY],[Fx_col, Fy_col],[fricx_tot, fricy_tot], [wfx, wfy]])
 
-        Fx_net = Fx_fluid + wallX + Fx_col
-        Fy_net = Fy_fluid + wallY + Fy_col
+        Fx_net = Fx_fluid + wallX + Fx_col + fricx_tot + wfx
+        Fy_net = Fy_fluid + wallY + Fy_col + fricy_tot + wfy
 
         T_col = 0
         # for j in range(num_parts):
@@ -1171,6 +1213,7 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
         #     print("w=0: torque is ", (T_col+Tnet+Twall))
         if (i==0):
             torques.append(Tnet)
+
         ddt = ddt + [vx, vy, Fx_net/mass, Fy_net/mass, w, Tnet/inertia]# (T_col+Tnet+Twall)/inertia ]#+ Twall +T_col] #TODO should the acceleration be F/m??
 
     tlast = t
@@ -1179,6 +1222,137 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
     energy.append(V_col+V_wall)
     return ddt
+
+
+# def stickPotential(x, y, xp, yp):
+#     dist = math.sqrt((x-xp)**2+(y-yp)**2)
+#     dir = np.array(unitVec([xp-x, yp-y]))
+#     F = dist * dir
+#     return F
+#
+#
+# omega = []
+# # tdisp = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+# tdisp = [[0,0,0],[0,0,0],[0,0,0]]
+# tlast = 0
+# collision_friction = [[0,0],[0,0],[0,0]]
+# # walldisp = [0]
+# def stepODEFricTest(t, pos, num_parts, R, energy, forces, times, derivs):
+#
+#     global tlast
+#     global tdisp
+#     # global walldisp
+#     # print(tlast)
+#     ddt = []
+#     V_col = 0
+#     times.append(t)
+#
+#     #stuck particle i=0
+#
+#     i = 1
+#     f_stuck = stickPotential(pos[i*6], pos[i*6+1], 50,75.1 )
+#
+#     ddt = [pos[i*6+2],pos[i*6+3],f_stuck[0]/mass, f_stuck[1]/mass, 0,0]
+#
+#     i = 0
+#     j = 1
+#
+#     x = pos[i*6]
+#     y = pos[i*6+1]
+#     vx = pos[i*6+2]
+#     vy = pos[i*6+3]
+#     theta = pos[i*6+4]
+#     w = pos[i*6+5]
+#
+#     #force due to fluid flow
+#     # Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xVel, yVel)
+#
+#     #force due to collisions
+#     Fx_col = 0
+#     Fy_col = 0
+#     fricx_tot = 0
+#     fricy_tot = 0
+#     Tnet = 0
+#
+#
+#     distance = math.sqrt((x-pos[j*6])**2 + (y-pos[j*6+1])**2)
+#
+#     #if the particles overlap
+#     if (distance < 2*R):
+#         xj = pos[j*6]
+#         yj = pos[j*6+1]
+#         vxj = pos[j*6+2]
+#         vyj = pos[j*6+3]
+#         wj = pos[j*6+5]
+#
+#         Fx, Fy, fricx, fricy, V, col_torque, newdisp = calcCollision(R, x, y, xj, yj, vx, vy, vxj, vyj, tdisp[i][j], tdisp[j][i], t-tlast, w, wj)
+#         Fx_col += Fx
+#         Fy_col += Fy
+#         fricx_tot += fricx
+#         fricy_tot += fricy
+#         V_col += V
+#         Tnet += col_torque
+#         tdisp[i][j] = newdisp
+#
+#     #else not in contact
+#     else:
+#         tdisp[i][j] = 0
+#
+#
+#     streamfun = calcStreamFun(10)
+#     u, v = getFluidVel(streamfun, 10,10)
+#     xvel, yvel = interpolateVelFn(u, v, 10, 10, 10, 10)
+#
+#     print(vx, vy, x, y)
+#     Fx_fluid, Fy_fluid = calcFluidForceNonDim(x, y, vx, vy, xvel, yvel)
+#
+#     # Tnet += calcHydroTorque(vortx, x,y,w, R) #+ Twall
+#     # print(Tnet/inertia, Twall/inertia)
+#
+#     #force from wall potential
+#     wallX = 0
+#     wallY = 0
+#     wfx = 0
+#     wfy = 0
+#     V_wall = 0
+#     Twall = 0
+#
+#     #calculate the point on the edge of the particle which is closest to the wall
+#     #the edge of the particle is what matters, not the center
+#     #this is a vector parpendicular to the wall
+#     # if (y <= len_m/2):
+#     if (y <= 50):
+#         # direction = unitVec((-1, 1/slope))
+#         direction = [0,1]
+#     else:
+#         # direction = unitVec((-1, -1/slope))
+#         direction = [0,-1]
+#     print(walldisp[i])
+#     wallX, wallY, wfx, wfy, V_wall, Twall, newwalldisp = calcPotentialWall(x, y, slope, Fx_col, Fy_col, R, Tnet, direction, i, w, vx, vy, walldisp[i], t-tlast)
+#
+#     walldisp[i] = newwalldisp
+#     print(walldisp[i])
+#     Tnet += Twall
+#
+#     collision_friction[i] = [fricx_tot, fricy_tot]
+#     #document forces
+#     forces.append([[Fx_fluid, Fy_fluid], [wallX, wallY],[Fx_col, Fy_col],[fricx_tot, fricy_tot], [wfx, wfy]])
+#
+#     print("wall fric", wfx)
+#     Fx_net = Fx_fluid + wallX + Fx_col + fricx_tot + wfx
+#     Fy_net = Fy_fluid + wallY + Fy_col + fricy_tot + wfy
+#
+#     ddt = [vx, vy, Fx_net/mass, Fy_net/mass, w, Tnet/inertia] + ddt
+#
+#     tlast = t
+#     print("time", tlast)
+#
+#     derivs.append(ddt)
+#
+#     energy.append(V_col+V_wall)
+#
+#     return ddt
+
 
 #Parameters
 #t - timestep
@@ -1283,6 +1457,10 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 
     solver = ode(stepODE).set_integrator('lsoda')
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx)
+    #
+    # solver = ode(stepODEFricTest).set_integrator('lsoda')
+    # solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs)
+
     y, t = [pos0], []
     while solver.successful() and solver.t < tf:
         t.append(solver.t)
@@ -1293,18 +1471,21 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
         frics = []
         for i in range(num_parts):
             vels.append([math.sqrt(out[i*4+2]**2+ out[i*4+3]**2)])
-            print(collision_friction)
-            print(collision_friction[i])
+            # print(collision_friction)
+            # print(collision_friction[i])
             frics.append(collision_friction[i])
         velocities.append(vels)
         graphic_fric.append(frics)
-        print(y[-1])
+        # print(y[-1])
 
 #     print(solver.get_return_code())
 
     print("finished sim...")
     return y, energy, forces, times, derivs
     # return y, energy, forces, t, derivs
+
+
+
 
 
 # Animate the trajectories of the particles
@@ -1440,6 +1621,9 @@ r = 30
 
 pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0,0]
 
+# pos0 = [50,25,0,0,0,0,50,75.1,0,0,0,0]
+# pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 155, 300, 0, 0,0,0]#, 13,24,0,0]
+
 #with friciton
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
 
@@ -1450,14 +1634,16 @@ pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 105, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 80, pos0, u, v)
+# r = 25.1
+# trajectory, energy, forces, t, der = runSim(2, r, 0.1, 0.1, pos0, u, v)
 ani = generateAnim(trajectory, r, np.array(graphic_fric))
-plt.show()
+# plt.show()
 
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.082820_3part_friction2.mp4', writer=writer)
-#
+# ani.save('clog.102020_3part_friction_wall_as_particle.mp4', writer=writer)
+
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
 # x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
 # x3 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
@@ -1474,46 +1660,60 @@ plt.show()
 # plt.title("y pos")
 # plt.show()
 
-graphic_fric = np.array(graphic_fric)
-print(graphic_fric[:,0])
-plt.title("Friction")
-plt.plot(graphic_fric[:,0][:,0])
-plt.plot(graphic_fric[:,0][:,1])
-plt.show()
-plt.title("Torque")
-plt.plot(torques, label="Collision")
-# plt.plot(walltorques, label="Wall")
-plt.show()
-# #
-plt.title("friction options")
-plt.plot(np.array(friction_options)[:,0], label="kinetic")
-plt.plot(np.array(friction_options)[:,1], label="static")
-plt.plot(np.array(friction_options)[:,2], label="mag")
-max = max(np.array(friction_options)[:,0])
-plt.ylim(-max, max)
-plt.legend()
-plt.show()
-plt.title("angular velocity")
-plt.plot(omega)
-plt.show()
-plt.title("relative velocity")
-plt.plot(relvelocity)
-plt.show()
-plt.plot(unittan)
-plt.title("Unit tangent")
-plt.show()
-plt.title("S")
-plt.plot(svector)
-plt.show()
-plt.plot(overlapN)
-plt.title("Overlap N")
-plt.show()
+# graphic_fric = np.array(graphic_fric)
+# print(graphic_fric[:,0])
+# plt.title("Friction")
+# plt.plot(graphic_fric[:,0][:,0])
+# plt.plot(graphic_fric[:,0][:,1])
+# plt.show()
+# plt.title("Torque")
+# plt.plot(torques, label="Collision")
+# # plt.plot(walltorques, label="Wall")
+# plt.show()
+# # #
+# plt.title("friction options")
+# plt.plot(np.array(friction_options)[:,0], label="kinetic")
+# plt.plot(np.array(friction_options)[:,1], label="static")
+# plt.plot(np.array(friction_options)[:,2], label="mag")
+# max = max(np.array(friction_options)[:,0])
+# plt.ylim(-max, max)
+# plt.legend()
+# plt.show()
+# plt.title("angular velocity")
+# plt.plot(omega)
+# plt.show()
+# plt.title("relative velocity")
+# plt.plot(relvelocity)
+# plt.show()
+# plt.plot(unittan)
+# plt.title("Unit tangent")
+# plt.show()
+# plt.title("S")
+# plt.plot(svector)
+# plt.show()
+# plt.plot(overlapN)
+# plt.title("Overlap N")
+# plt.show()
 plt.plot(total_disp)
 plt.title("Total displacement")
 plt.show()
 #
 #
+plt.show()
+print(walltorques)
+plt.plot(np.array(walltorques)[:,0],label="torque")
+plt.plot(np.array(walltorques)[:,1],label="rolling torque")
+plt.title("Wall torque")
+plt.legend()
+plt.show()
 
+
+print(coltorques)
+plt.plot(np.array(coltorques)[:,0],label="torque")
+plt.plot(np.array(coltorques)[:,1],label="rolling torque")
+plt.title("Collision torque")
+plt.legend()
+plt.show()
 #====================================================
 # plot system
 
@@ -1560,8 +1760,12 @@ plt.show()
 fcx = []
 fwx = []
 ffx = []
+fricx = []
+wf = []
 
 for i in range(len(forces)):
+    wf.append(forces[i][4][0]/mass)
+    fricx.append(forces[i][3][0]/mass)
     fcx.append(forces[i][2][0]/mass)
     fwx.append(forces[i][1][0]/mass)
     ffx.append(forces[i][0][0]/mass)
@@ -1569,9 +1773,40 @@ for i in range(len(forces)):
 plt.plot(t, fwx, label="wall")
 plt.plot(t, fcx, label="collision")
 plt.plot(t, ffx, label="fluid")
-plt.title("Forces over time on one particle")
+plt.plot(t, fricx, label="friction collision")
+plt.plot(t, wf, label="friction wall")
+plt.title("Forces over time on one particle - X dir")
 plt.ylabel("Force in x direction")
-# plt.ylim(-100,100)
+plt.ylim(-10,10)
+plt.xlim(77,80)
+
+plt.xlabel("time")
+plt.legend()
+plt.show()
+
+
+fcx = []
+fwx = []
+ffx = []
+fricx = []
+wf = []
+
+for i in range(len(forces)):
+    wf.append(forces[i][4][1]/mass)
+    fricx.append(forces[i][3][1]/mass)
+    fcx.append(forces[i][2][1]/mass)
+    fwx.append(forces[i][1][1]/mass)
+    ffx.append(forces[i][0][1]/mass)
+
+plt.plot(t, fwx, label="wall")
+plt.plot(t, fcx, label="collision")
+plt.plot(t, ffx, label="fluid")
+plt.plot(t, fricx, label="friction collision")
+plt.plot(t, wf, label="friction wall")
+plt.title("Forces over time on one particle - Y dir")
+plt.ylabel("Force in y direction")
+plt.ylim(-10,10)
+plt.xlim(77,80)
 
 plt.xlabel("time")
 plt.legend()
