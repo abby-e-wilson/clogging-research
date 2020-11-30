@@ -36,12 +36,12 @@ scalef_sim = 1
 slope = (len_m-len_c)/length
 
 #===Particles===
-mass = 10**(-6) # mass of particle in kg
+mass = 10**(-7) # mass of particle in kg
 R = 50 #micrometers
 inertia = 2/5*mass*R**2
 
 #===Physical Constants===
-E = (10 ** 6) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+E = (10 ** 8) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
 poisson = 0.2
 alpha = 5/2
@@ -49,7 +49,7 @@ alpha = 5/2
 #===Fluid Constants===
 dyn_vis = 8.9 * 10 ** (-4) * 10**(-6) #dynamic viscosity (8.90 × 10−4 Pa*s for water, units of micrometers)
 density = 997 #kg/m^3, for water
-maxV = 2 #max fluid velocity
+maxV = 200 #max fluid velocity
 beta = 6 * math.pi * dyn_vis * R
 
 #===Nondimentionalization Constants===
@@ -628,7 +628,7 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
     # overlap_n = (2*R - distance)
 
     #Normal coefficients
-    er = 0.75 # coefficent of resitution
+    er = 0.25 # coefficent of resitution
     damping_coeff = -2 * math.sqrt(5/6) * np.log(er)/math.sqrt(np.log(er)**2 + math.pi**2)
     kn = 4/3*E_eff*math.sqrt(r_eff*overlap_n)
     yn = damping_coeff * math.sqrt(2/3*kn*m_eff)
@@ -670,7 +670,7 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
     # print(Ft)
 
     #TODO SIGN ERROR HERE
-    torque = np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
+    torque = np.cross([-R*nij[0], -R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
 
     # if (yi<290):
     #     friction_options.append([coeff_friction*abs(Fn), kt*overlap_t, magFt])
@@ -877,13 +877,13 @@ def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction, i, w, vx, vy,
     # print(overlap_n, distance)
     if (overlap_n >= 0):
     #     #Normal coefficients
-        er = 0.75 # coefficent of resitution
+        er = 0.25 # coefficent of resitution
         damping_coeff = -2 * math.sqrt(5/6) * np.log(er)/math.sqrt(np.log(er)**2 + math.pi**2)
         kn = 4/3*E_eff*math.sqrt(r_eff*overlap_n)
         yn = damping_coeff * math.sqrt(2/3*kn*m_eff)
 
         #Hertz-Mindlin contact Model
-        Fn = (kn* overlap_n - yn*np.dot(relvel, nij))
+        Fn = (kn* overlap_n - yn*np.dot(relvel, nij)) *2
         Fx += Fn * nij[0] #negative because the force is opposite the normal vector,
         Fy += Fn * nij[1] #it points into the particle
     #
@@ -924,7 +924,7 @@ def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction, i, w, vx, vy,
         # print(magFt)
 
         #TODO SIGN ERROR HERE
-        torque = np.cross([R*nij[0], R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
+        torque = np.cross([-R*nij[0], -R*nij[1], 0], [Ft[0], Ft[1], 0])[2]
 
         if (y<50):
             # print(S, relvel[0])
@@ -1677,7 +1677,7 @@ pos0 = [50,25,0,0,0,0,50,75,0,0,0,0]
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 85, pos0, u, v)
 r = 25.0001
-trajectory, energy, forces, t, der = runSim(2, r, 0.01, 5, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.1, pos0, u, v)
 ani = generateAnim(trajectory, r, np.array(graphic_fric))
 plt.show()
 
