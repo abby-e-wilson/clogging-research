@@ -649,9 +649,11 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
     # overlap_t = abs(dispi_curr+dispj)
     #NEW DISP I: disp = origi point of contact
     if(np.linalg.norm(dispi) == 0):
+        print("set pos")
         dispi = [xi,yi]
+        dispj = [xj,yj]
     dispi_curr = np.array([dispi[0]-xi, dispi[1]-yi])
-    dispj_curr = np.array([dispi[0]-xj, dispi[1]-yj])
+    dispj_curr = np.array([dispj[0]-xj, dispj[1]-yj])
     disptot = dispi_curr-dispj_curr #[-xi+dispi[0],-yi+dispi[1]]
     tangential_direction = np.dot(disptot, tij)*tij
     if(np.linalg.norm(tangential_direction) != 0):
@@ -689,9 +691,9 @@ def calcCollision(R, xi, yi, xj, yj, vxi, vyi, vxj, vyj, dispi, dispj, dt, wi, w
 
     coeff_rolling = 0.02
     rolling_torque = 0
-    if (wi != 0):
-        dir_relvel = np.cross([R*nij[0], R*nij[1], 0], [relvel[0], relvel[1], 0])[2]
-        rolling_torque = -dir_relvel/abs(dir_relvel) * coeff_rolling * abs(Fn) * R#/MODIFIED - ok?
+    # if (wi != 0):
+    #     dir_relvel = np.cross([R*nij[0], R*nij[1], 0], [relvel[0], relvel[1], 0])[2]
+    #     rolling_torque = -dir_relvel/abs(dir_relvel) * coeff_rolling * abs(Fn) * R#/MODIFIED - ok?
 
     if (yi>310):
         # print("col")
@@ -1172,9 +1174,10 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
 
                 #else not in contact
                 else:
+                    # print("no contact")
                     #reset displacement
                     # print("reset")
-                    tdisp[i][j] = 0
+                    tdisp[i][j] = [0,0]
                     # tdisp[i][j*2+1] = 0
 
                 # if (i==0 and j ==2):
@@ -1688,15 +1691,15 @@ pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 105, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.1, 85, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
 ani = generateAnim(trajectory, r, np.array(graphic_fric))
-# plt.show()
+plt.show()
 
-Writer = animation.writers['ffmpeg']
-writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-ani.save('clog.120620_fric_stable.mp4', writer=writer)
+# Writer = animation.writers['ffmpeg']
+# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+# ani.save('clog.120620_fric_stable.mp4', writer=writer)
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
 # x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
