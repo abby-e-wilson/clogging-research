@@ -23,26 +23,26 @@ import argparse
 # Constants
 
 #===Pipe system===
-len_m = 600 #all units here in micrometers
-len_c = 150 #um
-length = 600 #um
+len_m = 165 #all units here in micrometers
+len_c = 30 #um
+length = 400 #um
 
 # len_m = 100
 # len_c = 100
 # length = 100
 
-scalef = 1/10 #um
+scalef = 60/400 #um
 scalef_sim = 1
 slope = (len_m-len_c)/length
 
 #===Particles===from scipy.integrate import ode
 
-mass = 10**(-6) # mass of particle in kg
-R = 30 #micrometers
+mass = 10**(-8) # mass of particle in kg
+R = 5.5 #micrometers
 inertia = 2/5*mass*R**2
 
 #===Physical Constants===
-E = (10 ** 3) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+E = (10 ** 4) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
 poisson = 0.2
 alpha = 5/2
@@ -51,7 +51,7 @@ alpha = 5/2
 dyn_vis = 8.9 * 10 ** (-4) * 10**(-6) #dynamic viscosity (8.90 × 10−4 Pa*s for water, units of micrometers)
 # dyn_vis = 10 * 10 ** (-4) * 10**(-6) #dynamic viscosity (8.90 × 10−4 Pa*s for water, units of micrometers)
 # density = 997 #kg/m^3, for water
-maxV = 2 #max fluid velocity
+maxV = 10 #max fluid velocity
 beta = 6 * math.pi * dyn_vis * R
 
 #===Nondimentionalization Constants===
@@ -1511,9 +1511,9 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     forces = []
     times = []
     derivs = []
-    xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
+    xvel, yvel = interpolateVelFn(u, v, 1/scalef, 1/scalef, 60, 60)
     w = vorticity(u,v,60)
-    vortx = interpolateVort(w, 10,10,60,60)
+    vortx = interpolateVort(w, 1/scalef,1/scalef,60,60)
 
     solver = ode(stepODE).set_integrator('lsoda')
     solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx, friction_forces)
@@ -1659,7 +1659,7 @@ num_parts = 6
 # pos0 = pos0 + [18, 39, 0,
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
-r = 30
+r = 5.5
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1682,6 +1682,7 @@ r = 30
 #         break
 
 pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0,0]
+pos0 = [167, 67, 0, 0, 0,0, 167, 98, 0, 0,0,0, 158, 82.5, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
 # r = 35
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
@@ -1699,16 +1700,16 @@ pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.1, 95, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(3, r, 0.01, 6, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
 ani = generateAnim(trajectory, r, np.array(graphic_fric))
-# plt.show()
+plt.show()
 
 # print(trajectory[-1])
-Writer = animation.writers['ffmpeg']
-writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-ani.save('clog.020520_fric_dampedtorque.mp4', writer=writer)
+# Writer = animation.writers['ffmpeg']
+# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+# ani.save('clog.020520_fric_dampedtorque.mp4', writer=writer)
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
 # x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
@@ -1991,9 +1992,9 @@ R = 30
 
 #FRICTION
 # pos_stable = [ 2.73009897e+02,  2.42257410e+02, 2.73005198e+02,  3.57746114e+02, 2.56706688e+02, 2.99999988e+02]
-pos_stable = [ 2.73218833e+02, 2.42409013e+02, 2.72466805e+02, 3.58155029e+02, 2.57042158e+02, 3.00179358e+02]
-#
-friction_by_particle = [3.6059191958025135e-07, 1.0096927369827408e-07, 3.5904737596850164e-07, -9.552436429875207e-08, -3.5904737596850164e-07, 9.552436429875207e-08]
+# pos_stable = [ 2.73218833e+02, 2.42409013e+02, 2.72466805e+02, 3.58155029e+02, 2.57042158e+02, 3.00179358e+02]
+# #
+# friction_by_particle = [3.6059191958025135e-07, 1.0096927369827408e-07, 3.5904737596850164e-07, -9.552436429875207e-08, -3.5904737596850164e-07, 9.552436429875207e-08]
 
 # print(pos_stable)
 
