@@ -42,7 +42,7 @@ R = 30 #micrometers
 inertia = 2/5*mass*R**2
 
 #===Physical Constants===
-E = (10 ** 3 ) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+E = (10 ** 3) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
 poisson = 0.2
 alpha = 5/2
@@ -1102,7 +1102,7 @@ tdisp = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
 # tdisp = [[0,0,0],[0,0,0],[0,0,0]]
 tlast = 0
 collision_friction = [[0,0],[0,0],[0,0]]
-def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx):
+def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx, friction_forces):
 
     global tlast
     global tdisp
@@ -1160,6 +1160,9 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     V_col += V
                     Tnet += col_torque
                     tdisp[i][j] = newdisp
+
+                    friction_forces[i*2]=fricx
+                    friction_forces[i*2+1]=fricy
                     # tdisp[i][j*2+1] = newdisp[1]
                     # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
@@ -1185,7 +1188,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                 #     total_disp.append(abs(tdisp[i][j]+tdisp[j][i]))
 
 
-        Tnet += calcHydroTorque(vortx, x,y,w, R) #+ Twall
+        if (Fx_col == 0):
+            Tnet += calcHydroTorque(vortx, x,y,w, R) #+ Twall
         # print(Tnet/inertia, Twall/inertia)
 
         #force from wall potential
@@ -1499,6 +1503,7 @@ def stepODEFricTest(t, pos, num_parts, R, energy, forces, times, derivs):
 
 velocities = []
 graphic_fric = []
+friction_forces = [0,0,0,0,0,0]
 def runSim(num_parts, r, dt, tf, pos0, u, v):
 
     print("starting sim....")
@@ -1511,7 +1516,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
     vortx = interpolateVort(w, 10,10,60,60)
 
     solver = ode(stepODE).set_integrator('lsoda')
-    solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx)
+    solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs, xvel, yvel, vortx, friction_forces)
     # #
     # solver = ode(stepODEFricTest).set_integrator('lsoda')
     # solver.set_initial_value(pos0, 0).set_f_params(num_parts, r, energy, forces, times, derivs)
@@ -1537,6 +1542,7 @@ def runSim(num_parts, r, dt, tf, pos0, u, v):
 #     print(solver.get_return_code())
 
     print("finished sim...")
+    print(friction_forces)
     # return y, energy, forces, times, derivs
     return y, energy, forces, t, derivs
 
@@ -1676,8 +1682,8 @@ r = 30
 #         break
 
 pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0,0]
-pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
-r = 35
+# pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
+# r = 35
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 390, 0, 0,0,0,149.5, 300, 0, 0,0,0]
 # pos0 = [50,25,0,0,0,0,50,75,0,0,0,0]
@@ -1697,11 +1703,12 @@ trajectory, energy, forces, t, der = runSim(3, r, 0.1, 95, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
 ani = generateAnim(trajectory, r, np.array(graphic_fric))
-plt.show()
+# plt.show()
 
-# Writer = animation.writers['ffmpeg']
-# writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.120820_fric_stable_er1.mp4', writer=writer)
+# print(trajectory[-1])
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+ani.save('clog.020520_fric_dampedtorque.mp4', writer=writer)
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
 # x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
@@ -1711,15 +1718,11 @@ plt.show()
 # plt.plot(x3)
 # plt.title("x pos")
 # plt.show()
-#
-#
-# print(trajectory[40])
-# print(len(trajectory), len(t))
-plt.plot(trajectory[:,6])
-# plt.plot(t, trajectory[:][:][3])
-# # plt.plot(t, trajectory[:][:][5])
-plt.title("y pos")
-plt.show()
+
+
+# plt.plot(trajectory[:,6])
+# plt.title("y pos")
+# plt.show()
 
 # graphic_fric = np.array(graphic_fric)
 # print(graphic_fric[:,0])
@@ -1740,12 +1743,12 @@ plt.show()
 # plt.ylim(-max, max)
 # plt.legend()
 # plt.show()
-plt.title("angular velocity")
-plt.plot(omega)
-plt.show()
-plt.title("relative velocity")
-plt.plot(relvelocity)
-plt.show()
+# plt.title("angular velocity")
+# plt.plot(omega)
+# plt.show()
+# plt.title("relative velocity")
+# plt.plot(relvelocity)
+# plt.show()
 # plt.plot(unittan)
 # plt.title("Unit tangent")
 # plt.show()
@@ -1753,31 +1756,31 @@ plt.show()
 # plt.plot(np.array(svector)[:,0])
 # plt.plot(np.array(svector)[:,1])
 # plt.show()
-plt.plot(overlapN)
-plt.title("Overlap N")
-plt.show()
-plt.plot(total_disp)
-plt.title("Total displacement")
-plt.show()
+# plt.plot(overlapN)
+# plt.title("Overlap N")
+# plt.show()
+# plt.plot(total_disp)
+# plt.title("Total displacement")
+# plt.show()
 #
 #
-plt.show()
-print(walltorques)
-plt.plot(np.array(walltorques)[:,0],label="torque")
-plt.plot(np.array(walltorques)[:,1],label="rolling torque")
-plt.title("Wall torque")
-plt.legend()
-plt.ylim(-1,1)
-plt.show()
-
-
-print(coltorques)
-plt.plot(np.array(coltorques)[:,0],label="torque")
-plt.plot(np.array(coltorques)[:,1],label="rolling torque")
-plt.title("Collision torque")
-plt.legend()
-plt.ylim(-0.0001,0.0001)
-plt.show()
+# plt.show()
+# print(walltorques)
+# plt.plot(np.array(walltorques)[:,0],label="torque")
+# plt.plot(np.array(walltorques)[:,1],label="rolling torque")
+# plt.title("Wall torque")
+# plt.legend()
+# plt.ylim(-1,1)
+# plt.show()
+#
+#
+# print(coltorques)
+# plt.plot(np.array(coltorques)[:,0],label="torque")
+# plt.plot(np.array(coltorques)[:,1],label="rolling torque")
+# plt.title("Collision torque")
+# plt.legend()
+# plt.ylim(-0.0001,0.0001)
+# plt.show()
 #====================================================
 # plot system
 
@@ -1808,56 +1811,56 @@ for i in velocities:
     v3.append(i[2])
 #     v4.append(i[3])
 # #
-plt.plot(t, v1, label='particle 1')
-plt.plot(t, v2, label='particle 2')
-plt.plot(t, v3, label='particle 3')
-# plt.plot(t, v4, label='particle 4')
-plt.legend()
-# plt.plot(v4)
-plt.xlabel('time')
-plt.ylabel('velocity')
-plt.title('Velocity of particles - 4 particle bridge')
-# plt.xlim(75,85)
-# plt.ylim(0,0.1)
-# plt.xlim(70,104)
-plt.show()
+# plt.plot(t, v1, label='particle 1')
+# plt.plot(t, v2, label='particle 2')
+# plt.plot(t, v3, label='particle 3')
+# # plt.plot(t, v4, label='particle 4')
+# plt.legend()
+# # plt.plot(v4)
+# plt.xlabel('time')
+# plt.ylabel('velocity')
+# plt.title('Velocity of particles - 4 particle bridge')
+# # plt.xlim(75,85)
+# # plt.ylim(0,0.1)
+# # plt.xlim(70,104)
+# plt.show()
 fcx = []
 fwx = []
 ffx = []
 fricx = []
 wf = []
 
-usedtimes = []
-print(forces)
-print(len(forces))
-for i in range(len(forces)):
-    if(len(forces[i]) >0 ):
-        # print(forces[i])
-        usedtimes.append(t[i])
-        fricx.append(forces[i][3][0]/mass)
-        fcx.append(forces[i][2][0]/mass)
-        fwx.append(forces[i][1][0]/mass)
-        ffx.append(forces[i][0][0]/mass)
-        wf.append(forces[i][4][0]/mass)
+# usedtimes = []
+# print(forces)
+# print(len(forces))
+# for i in range(len(forces)):
+#     if(len(forces[i]) >0 ):
+#         # print(forces[i])
+#         usedtimes.append(t[i])
+#         fricx.append(forces[i][3][0]/mass)
+#         fcx.append(forces[i][2][0]/mass)
+#         fwx.append(forces[i][1][0]/mass)
+#         ffx.append(forces[i][0][0]/mass)
+#         wf.append(forces[i][4][0]/mass)
 
 # plt.plot(fwx, label="wall")
 # plt.plot(fcx, label="collision")
 # plt.plot(ffx, label="fluid")
 # plt.plot(fricx, label="friction collision")
 # plt.plot(wf, label="friction wall")
-plt.plot(usedtimes, fwx, label="wall")
-plt.plot(usedtimes, fcx, label="collision")
-plt.plot(usedtimes, ffx, label="fluid")
-plt.plot(usedtimes, fricx, label="friction collision")
-plt.plot(usedtimes, wf, label="friction wall")
-plt.title("Forces over time on one particle - X dir")
-plt.ylabel("Force in x direction")
-# plt.ylim(-2.5,2.5)
-# plt.xlim(77,80)
-
-plt.xlabel("time")
-plt.legend()
-plt.show()
+# plt.plot(usedtimes, fwx, label="wall")
+# plt.plot(usedtimes, fcx, label="collision")
+# plt.plot(usedtimes, ffx, label="fluid")
+# plt.plot(usedtimes, fricx, label="friction collision")
+# plt.plot(usedtimes, wf, label="friction wall")
+# plt.title("Forces over time on one particle - X dir")
+# plt.ylabel("Force in x direction")
+# # plt.ylim(-2.5,2.5)
+# # plt.xlim(77,80)
+#
+# plt.xlabel("time")
+# plt.legend()
+# plt.show()
 
 
 # for i in range(len(forces)-2):
@@ -1889,35 +1892,35 @@ ffx = []
 fricx = []
 wf = []
 
-for i in range(len(forces)):
-    if (len(forces[i])>0):
-        wf.append(forces[i][4][1]/mass)
-        fricx.append(forces[i][3][1]/mass)
-        fcx.append(forces[i][2][1]/mass)
-        fwx.append(forces[i][1][1]/mass)
-        ffx.append(forces[i][0][1]/mass)
+# for i in range(len(forces)):
+#     if (len(forces[i])>0):
+#         wf.append(forces[i][4][1]/mass)
+#         fricx.append(forces[i][3][1]/mass)
+#         fcx.append(forces[i][2][1]/mass)
+#         fwx.append(forces[i][1][1]/mass)
+#         ffx.append(forces[i][0][1]/mass)
 
-plt.plot(usedtimes, fwx, label="wall")
-plt.plot(usedtimes, fcx, label="collision")
-plt.plot(usedtimes, ffx, label="fluid")
-plt.plot(usedtimes, fricx, label="friction collision")
-plt.plot(usedtimes, wf, label="friction wall")
-plt.title("Forces over time on one particle - Y dir")
-plt.ylabel("Force in y direction")
-# plt.ylim(-2.5,2.5)
-# plt.xlim(77,80)
+# plt.plot(usedtimes, fwx, label="wall")
+# plt.plot(usedtimes, fcx, label="collision")
+# plt.plot(usedtimes, ffx, label="fluid")
+# plt.plot(usedtimes, fricx, label="friction collision")
+# plt.plot(usedtimes, wf, label="friction wall")
+# plt.title("Forces over time on one particle - Y dir")
+# plt.ylabel("Force in y direction")
+# # plt.ylim(-2.5,2.5)
+# # plt.xlim(77,80)
+#
+# plt.xlabel("time")
+# plt.legend()
+# plt.show()
 
-plt.xlabel("time")
-plt.legend()
-plt.show()
 
-
-print(trajectory[-1])
+# print(trajectory[-1])
 #====================================================
 #Hessian
 
-n = 4
-R = 3
+n = 3
+R = 30
 
 #Get the stable point at a certain timestep of a simulation
 # fig, ax = plt.subplots()
@@ -1988,13 +1991,15 @@ R = 3
 
 #FRICTION
 # pos_stable = [ 2.73009897e+02,  2.42257410e+02, 2.73005198e+02,  3.57746114e+02, 2.56706688e+02, 2.99999988e+02]
-
+pos_stable = [ 2.73218833e+02, 2.42409013e+02, 2.72466805e+02, 3.58155029e+02, 2.57042158e+02, 3.00179358e+02]
+#
+friction_by_particle = [3.6059191958025135e-07, 1.0096927369827408e-07, 3.5904737596850164e-07, -9.552436429875207e-08, -3.5904737596850164e-07, 9.552436429875207e-08]
 
 # print(pos_stable)
 
 def Energy(pos, n, R):
 
-    E = 0
+    En = 0
     for i in range(n):
         x = pos[i*2+0]
         y = pos[i*2+1]
@@ -2005,12 +2010,11 @@ def Energy(pos, n, R):
 
                 #if the particles overlap
                 if (distance < 2*R):
-                    xj = pos[j*2]
-                    yj = pos[j*2+1]
+                    # print("overlaps", distance, 1-distance/(2*R))
 
-                    Fx, Fy, V = calcCollision(R, x, y, xj, yj)
-                    E += V
-                    # print(V)
+                    Vij =  4*E/(3*(1-poisson)**2)* math.sqrt(R/2) * ((1-distance/(2*R))**alpha)
+                    En += Vij
+                    # print(Vij)
 
                 #Add attractive forces between particles
                 # if (i==2 and j==0 or i==0 and j==2):[j*2], pos[j*2+1], R)
@@ -2026,12 +2030,25 @@ def Energy(pos, n, R):
             direction = unitVec((-1, 1/slope))
         else:
             direction = unitVec((-1, -1/slope))
-        wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
-        E += V_wall
+        # wallX, wallY, V_wall= calcPotentialWall(x - direction[0]*R, y - direction[1]*R, slope)
+
+
+        #UPDATE TO PROPER POTENTIAL
+        m1 = slope
+        m2 = -slope
+        b1 = 0
+        b2 = len_m
+        d1 = abs((b1+m1*x-y)/math.sqrt(1+m1**2))
+        d2 = abs((b2+m2*x-y)/math.sqrt(1+m2**2))
+        distance = min(d1, d2)
+
+        if (distance < R):
+            V_wall = 4*E/(3*(1-poisson)**2) * math.sqrt(R) * ((1-distance/(R))**alpha)
+            En += V_wall
         # print(V_wall)
 
-    # print("E:  ", E)
-    return E
+    print("E:  ", En)
+    return En
 
 
 def second_deriv_E(pos, n, R, i, j, di, dj):
@@ -2070,40 +2087,74 @@ def second_deriv_one_var(pos, n, R, i, di):
 
     return derivE
 
-Hessian = np.zeros((n*2, n*2))
-for i in range(n*2):
-    for j in range(n*2):
-        Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
+# Hessian = np.zeros((n*2, n*2))
+# for i in range(n*2):
+#     for j in range(n*2):
+#         Hessian[i][j] = second_deriv_E(pos_stable, n, R, i, j, 10e-4, 10e-4)
 # np.savetxt("hessian_diff.txt", Hessian)
 
 # BD Hessian
-xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
-bdHessian = np.zeros((n*2+1, n*2+1))
-for i in range(n*2+1):
-    for j in range(n*2+1):
-        if i==0 and j%2==1:
-            Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
+# xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+# bdHessian = np.zeros((n*2+1, n*2+1))
+# for i in range(n*2+1):
+#     for j in range(n*2+1):
+#         if i==0 and j%2==1:
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[j-1], pos_stable[j], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i][j+1] = Fy
+#         if j==0 and i%2==1 :
+#             Fx, Fy = calcFluidForceNonDim(pos_stable[i-1], pos_stable[i], 0, 0, xvel, yvel)
+#             bdHessian[i][j] = Fx
+#             bdHessian[i+1][j] = Fy
+#         # if i == 1 and j==6:
+#         #     Fx, Fy = attractiveForce(pos_stable[4], pos_stable[5], pos_stable[6], pos_stable[7], R)
+#         #     bdHessian[i][j] = Fx
+#         #     bdHessian[i][j+1] = Fy
+#         #     bdHessian[j][i] = Fx
+#         #     bdHessian[j+1][i] = Fy
+#         #     Fx, Fy = attractiveForce(pos_stable[6], pos_stable[7], pos_stable[4], pos_stable[5], R)
+#         #     bdHessian[i][j+2] = Fx
+#         #     bdHessian[i][j+3] = Fy
+#         #     bdHessian[j+2][i] = Fx
+#         #     bdHessian[j+3][i] = Fy
+#         elif i>0 and j>0:
+#             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
+#             # print(i,j,bdHessian[i][j])
+
+
+#=============================
+# BD Hessian WITH FRICTION
+
+
+# xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
+xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
+bdHessian = np.zeros((n*2+2, n*2+2)) # +2 bc 2 constraints
+for i in range(n*2+2):
+    for j in range(n*2+2):
+        #fluid
+        if i==0 and j%2==0 and j>1:
+            Fx, Fy = calcFluidForceNonDim(pos_stable[j-2], pos_stable[j-1], 0, 0, xvel, yvel)
             bdHessian[i][j] = Fx
             bdHessian[i][j+1] = Fy
-        if j==0 and i%2==1 :
-            Fx, Fy = calcFluidForceNonDim(pos_stable[i-1], pos_stable[i], 0, 0, xvel, yvel)
+        if j==0 and i%2==0 and i>1:
+            Fx, Fy = calcFluidForceNonDim(pos_stable[i-2], pos_stable[i-1], 0, 0, xvel, yvel)
             bdHessian[i][j] = Fx
             bdHessian[i+1][j] = Fy
-        # if i == 1 and j==6:
-        #     Fx, Fy = attractiveForce(pos_stable[4], pos_stable[5], pos_stable[6], pos_stable[7], R)
-        #     bdHessian[i][j] = Fx
-        #     bdHessian[i][j+1] = Fy
-        #     bdHessian[j][i] = Fx
-        #     bdHessian[j+1][i] = Fy
-        #     Fx, Fy = attractiveForce(pos_stable[6], pos_stable[7], pos_stable[4], pos_stable[5], R)
-        #     bdHessian[i][j+2] = Fx
-        #     bdHessian[i][j+3] = Fy
-        #     bdHessian[j+2][i] = Fx
-        #     bdHessian[j+3][i] = Fy
-        elif i>0 and j>0:
-            bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-1, j-1, 10e-4, 10e-4)
-            # print(i,j,bdHessian[i][j])
+        #friction
+        if i==1 and j%2==0 and j>1:
+            bdHessian[i][j] = friction_by_particle[j-2]
+            bdHessian[i][j+1] = friction_by_particle[j-1]
+        if j==1 and i%2==0 and i>1:
+            print(i,j, friction_by_particle[j-2])
+            bdHessian[i][j] = friction_by_particle[i-2]
+            bdHessian[i+1][j] = friction_by_particle[i-1]
+        elif i>1 and j>1:
+            # print(i,j)
+            bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-2, j-2, 10e-4, 10e-4)
+            print(i,j,bdHessian[i][j])
 
+np.savetxt("hessian_fric.txt", bdHessian)
+bdHessian = bdHessian*10**7
 #BD Hessian - separate constraints
 # xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 # bdHessian = np.zeros((n*3, n*3))
@@ -2137,7 +2188,7 @@ energy_stable = Energy(pos_stable, n, R)
 print("Total Energy: "+str(energy_stable))
 
 # # constraints in the bd Hessian - 1 row of fluids
-constraints = 1
+constraints = 2
 
 for i in range(n*2+constraints):
     eigvec = v[:,i][constraints:]
@@ -2149,20 +2200,20 @@ for i in range(n*2+constraints):
     print("Does the energy decrease when system is shifted in direction of eigenvector?")
     print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
 
-# for i in range(n*2+constraints):
-#     vec = v[:,i][constraints:]
-#     eigvalue = w[i]
-#     steps = np.linspace(-10e-2, 10e-2, 1000)
-#
-#     energies = []
-#     for j in steps:
-#         new_pos = np.add(vec*j,pos_stable)
-#         energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
-#
-#     plt.plot(steps, energies)
-#     plt.title("Change in energy around eigenvalue: " + str(w[i]))
-#     plt.plot(steps, np.zeros((1000)))#plot a zero line
-#     plt.show()
+for i in range(n*2+constraints):
+    vec = v[:,i][constraints:]
+    eigvalue = w[i]
+    steps = np.linspace(-10e-2, 10e-2, 1000)
+
+    energies = []
+    for j in steps:
+        new_pos = np.add(vec*j,pos_stable)
+        energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
+
+    plt.plot(steps, energies)
+    plt.title("Change in energy around eigenvalue: " + str(w[i]))
+    plt.plot(steps, np.zeros((1000)))#plot a zero line
+    plt.show()
 
 #Test eigenvalues are correctly matched with vectors
 for i in range(n*2+constraints):
@@ -2171,39 +2222,39 @@ for i in range(n*2+constraints):
     print(np.dot(bdHessian, v[:,i])) #these should be equal
 
 #Plot all eigenvectors
-# for i in range(n*2+constraints):
-#     fig, ax = plt.subplots()
-#
-#     #plot particles
-#     for j in range(n):
-#
-#         x = pos_stable[0 +j*2]
-#         y = pos_stable[1 +j*2]
-#
-#         circle = Circle((0,0), R, color="black", fill=False)
-#         circle.center = [x,y]
-#         ax.add_artist(circle)
-#
-#     #plot vectors
-#     ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
-#     ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
-#     ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
-#     ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
-#
-#     #plot bd lines
-#     xmax = length*scalef
-#     ymax = len_m*scalef
-#     plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-#     plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
-#
-#     plt.gca().set_aspect('equal', adjustable='box')
-#     plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
-#     plt.figtext(.5,.9,str(v[:,i]),fontsize=8,ha='center')
-#     plt.ylim(0,60)
-#     plt.xlim(0,60)
-#     print("saving fig..."+str(i))
-#     plt.savefig("bdhess_4part_dimer" + str(i))
-#     plt.show()
+for i in range(n*2+constraints):
+    fig, ax = plt.subplots()
+
+    #plot particles
+    for j in range(n):
+
+        x = pos_stable[0 +j*2]
+        y = pos_stable[1 +j*2]
+
+        circle = Circle((0,0), R, color="black", fill=False)
+        circle.center = [x,y]
+        ax.add_artist(circle)
+
+    #plot vectors
+    ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
+    ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
+    ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
+    # ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
+
+    #plot bd lines
+    xmax = length*scalef
+    ymax = len_m*scalef
+    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
+    plt.figtext(.5,.9,str(v[:,i]),fontsize=8,ha='center')
+    plt.ylim(0,60)
+    plt.xlim(0,60)
+    print("saving fig..."+str(i))
+    plt.savefig("bdhess_3part_fric" + str(i))
+    plt.show()
 
 
 #Directional Analysis
