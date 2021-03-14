@@ -23,26 +23,30 @@ import argparse
 # Constants
 
 #===Pipe system===
-len_m = 165 #all units here in micrometers
-len_c = 30 #um
-length = 400 #um
+# len_m = 165 #all units here in micrometers
+# len_c = 30 #um
+# length = 400 #um
 
+
+len_m = 166.7
+len_c = 33.333
+length = 300
 # len_m = 100
 # len_c = 100
 # length = 100
 
-scalef = 60/400 #um
+scalef = 60/300 #um
 scalef_sim = 1
 slope = (len_m-len_c)/length
 
 #===Particles===from scipy.integrate import ode
 
 mass = 10**(-8) # mass of particle in kg
-R = 5.5 #micrometers
+R = 6.5 #micrometers
 inertia = 2/5*mass*R**2
 
 #===Physical Constants===
-E = (10 ** 4) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
+E = (10 ** 3) * (10**(-6))  #E in N/um**2 (newtons per micrometer squared)  (start with super soft spheres)
 print(E)
 poisson = 0.2
 alpha = 5/2
@@ -558,6 +562,7 @@ def plotVelocityField(u, v, nx, ny):
     # plt.savefig("corr_velfield.png")
     plt.show()
 
+# streamfun = calcStreamFun(60)
 # u, v = getFluidVel(streamfun, 60, 60)
 # plotVelocityField(u, v, 60, 60)
 
@@ -1161,8 +1166,8 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     Tnet += col_torque
                     tdisp[i][j] = newdisp
 
-                    friction_forces[i*2]=fricx
-                    friction_forces[i*2+1]=fricy
+                    friction_forces[i*2]+=fricx
+                    friction_forces[i*2+1]+=fricy
                     # tdisp[i][j*2+1] = newdisp[1]
                     # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
@@ -1217,6 +1222,9 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
             walldisp[i] = newwalldisp
             Tnet += Twall
 
+
+        friction_forces[i*2]+=wfx
+        friction_forces[i*2+1]+=wfy
         collision_friction[i] = [fricx_tot, fricy_tot]
         #document forces
         if i == 0:
@@ -1565,19 +1573,21 @@ def generateAnim(y, r, friction):
     # u, v = getFluidVelGraphic(streamfun, int(length*scalef), int(len_m*scalef))
     #initialize figure and create a scatterplot
     fig, ax = plt.subplots()
-    plt.xlim(0,xmax)
-    plt.ylim(0,ymax)
+    # plt.xlim(0,xmax)
+    # plt.ylim(0,ymax)
+    plt.xlim(50,200)
+    plt.ylim(29,138)
     # plt.pcolor(X, Y, u)
     # plt.colorbar()
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.grid(b=True, which='major', color='#666666', linestyle='-')
+    # plt.grid(b=True, which='major', color='#666666', linestyle='-')
 
     plt.plot((0, xmax/2, xmax), (ymax, (len_m*scalef_sim+len_c*scalef_sim)/2, ymax), c="blue")
     plt.plot((0, xmax/2, xmax), (0, (len_m*scalef_sim-len_c*scalef_sim)/2, 0), c="blue")
     # plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
     # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 
-    scatter = ax.scatter([], [], c='red')
+    # scatter = ax.scatter([], [], c='red')
     circles = []
     # arrow = plt.arrow(0,0,0,0)
     # patch = ax.add_patch(arrow)
@@ -1588,7 +1598,7 @@ def generateAnim(y, r, friction):
 
         # global patch
         positions = []
-        dots = []
+        # dots = []
         curr_num_parts = int(len(y[:][int(timestep*5)]))
 
         curr_num_parts = int(len(y[:][int(timestep*5)])/6)
@@ -1610,7 +1620,7 @@ def generateAnim(y, r, friction):
 
             circles[i].center = positions[-1]
 
-            dots.append([posx + r*math.cos(theta), posy + r*math.sin(theta)])
+            # dots.append([posx + r*math.cos(theta), posy + r*math.sin(theta)])
 
             # if (i==0):
             #     newpatch = plt.arrow(posx, posy,friction[int(timestep*5)][i][0]*10e6,friction[int(timestep*5)][i][1]*10e6)
@@ -1620,8 +1630,8 @@ def generateAnim(y, r, friction):
         for i in range(len(circles) -curr_num_parts):
             circles[curr_num_parts+i].center = (-5,-5)
 
-        scatter.set_offsets(dots)
-        return circles, scatter#, patch
+        # scatter.set_offsets(dots)
+        return circles#, scatter#, patch
 
     #create the animation
     ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/5), interval=1)
@@ -1660,6 +1670,7 @@ num_parts = 6
 pos0 = [19, 23, 0,0, 19,37,0,0]#, 15,30,0,0]
 
 r = 5.5
+r=6.7
 # trajectory, energy, forces, t, der = runSim(3, r, 0.1, 200, pos0, u, v)
 
 # xmin = 15.0
@@ -1683,6 +1694,8 @@ r = 5.5
 
 pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24,0,0]
 pos0 = [167, 67, 0, 0, 0,0, 167, 98, 0, 0,0,0, 158, 82.5, 0, 0,0,0]#, 13,24,0,0]
+pos0 = [167, 67.333, 0, 0, 0,0, 167, 99.333, 0, 0,0,0, 158, 83.333, 0, 0,0,0]#, 13,24,0,0]
+pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
 # r = 35
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
@@ -1700,16 +1713,17 @@ pos0 = [167, 67, 0, 0, 0,0, 167, 98, 0, 0,0,0, 158, 82.5, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(3, r, 0.01, 6, pos0, u, v)
+# trajectory, energy, forces, t, der = runSim(3, r, 0.001, 4, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
-ani = generateAnim(trajectory, r, np.array(graphic_fric))
-plt.show()
-
+# ani = generateAnim(trajectory, r, np.array(graphic_fric))
+# plt.show()
+#
 # print(trajectory[-1])
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.020520_fric_dampedtorque.mp4', writer=writer)
+# ani.save('clog.0314_aps.mp4', writer=writer)
+# plt.show()
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
 # x2 = [trajectory[:][i][i] for i in range(len(trajectory[:]))]
@@ -1921,7 +1935,7 @@ wf = []
 #Hessian
 
 n = 3
-R = 30
+R = 6.7
 
 #Get the stable point at a certain timestep of a simulation
 # fig, ax = plt.subplots()
@@ -1996,6 +2010,11 @@ R = 30
 # #
 # friction_by_particle = [3.6059191958025135e-07, 1.0096927369827408e-07, 3.5904737596850164e-07, -9.552436429875207e-08, -3.5904737596850164e-07, 9.552436429875207e-08]
 
+
+friction_by_particle = [-0.004081659728288158, -0.001466628893092921, -0.003847638154290543, 0.0017874456980855437, 0.0012249661179661966, 0.0013360835875541514]
+pos_stable = [ 1.42082867e+02,  7.04848431e+01, 1.43474557e+02,  9.55965687e+01,1.38215242e+02,  8.32932228e+01]
+
+
 # print(pos_stable)
 
 def Energy(pos, n, R):
@@ -2048,7 +2067,7 @@ def Energy(pos, n, R):
             En += V_wall
         # print(V_wall)
 
-    print("E:  ", En)
+    # print("E:  ", En)
     return En
 
 
@@ -2128,7 +2147,7 @@ def second_deriv_one_var(pos, n, R, i, di):
 
 
 # xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
-xvel, yvel = interpolateVelFn(u, v, 10, 10, 60, 60)
+xvel, yvel = interpolateVelFn(u, v, 1/scalef, 1/scalef, 60, 60)
 bdHessian = np.zeros((n*2+2, n*2+2)) # +2 bc 2 constraints
 for i in range(n*2+2):
     for j in range(n*2+2):
@@ -2146,16 +2165,16 @@ for i in range(n*2+2):
             bdHessian[i][j] = friction_by_particle[j-2]
             bdHessian[i][j+1] = friction_by_particle[j-1]
         if j==1 and i%2==0 and i>1:
-            print(i,j, friction_by_particle[j-2])
+            # print(i,j, friction_by_particle[j-2])
             bdHessian[i][j] = friction_by_particle[i-2]
             bdHessian[i+1][j] = friction_by_particle[i-1]
         elif i>1 and j>1:
             # print(i,j)
             bdHessian[i][j] = second_deriv_E(pos_stable, n, R, i-2, j-2, 10e-4, 10e-4)
-            print(i,j,bdHessian[i][j])
+            # print(i,j,bdHessian[i][j])
 
 np.savetxt("hessian_fric.txt", bdHessian)
-bdHessian = bdHessian*10**7
+bdHessian = bdHessian
 #BD Hessian - separate constraints
 # xvel, yvel = interpolateVelFn(u, v, 1, 1, length*scalef, len_m*scalef)
 # bdHessian = np.zeros((n*3, n*3))
@@ -2191,30 +2210,30 @@ print("Total Energy: "+str(energy_stable))
 # # constraints in the bd Hessian - 1 row of fluids
 constraints = 2
 
-for i in range(n*2+constraints):
-    eigvec = v[:,i][constraints:]
-    eigvalue = w[i]
-
-    new_pos = np.add(eigvec*10e-4, pos_stable)
-    energy_new = Energy(new_pos, n, R)
-
-    print("Does the energy decrease when system is shifted in direction of eigenvector?")
-    print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
-
-for i in range(n*2+constraints):
-    vec = v[:,i][constraints:]
-    eigvalue = w[i]
-    steps = np.linspace(-10e-2, 10e-2, 1000)
-
-    energies = []
-    for j in steps:
-        new_pos = np.add(vec*j,pos_stable)
-        energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
-
-    plt.plot(steps, energies)
-    plt.title("Change in energy around eigenvalue: " + str(w[i]))
-    plt.plot(steps, np.zeros((1000)))#plot a zero line
-    plt.show()
+# for i in range(n*2+constraints):
+#     eigvec = v[:,i][constraints:]
+#     eigvalue = w[i]
+#
+#     new_pos = np.add(eigvec*10e-4, pos_stable)
+#     energy_new = Energy(new_pos, n, R)
+#
+#     print("Does the energy decrease when system is shifted in direction of eigenvector?")
+#     print("New Energy #"+str(i)+" "+str(energy_new)+" " + str(energy_new<energy_stable)+ " "+str(eigvalue))
+#
+# for i in range(n*2+constraints):
+#     vec = v[:,i][constraints:]
+#     eigvalue = w[i]
+#     steps = np.linspace(-10e-2, 10e-2, 1000)
+#
+#     energies = []
+#     for j in steps:
+#         new_pos = np.add(vec*j,pos_stable)
+#         energies.append(Energy(new_pos, n, R)-energy_stable) #get CHANGE in energy
+#
+#     plt.plot(steps, energies)
+#     plt.title("Change in energy around eigenvalue: " + str(w[i]))
+#     plt.plot(steps, np.zeros((1000)))#plot a zero line
+#     plt.show()
 
 #Test eigenvalues are correctly matched with vectors
 for i in range(n*2+constraints):
@@ -2223,6 +2242,7 @@ for i in range(n*2+constraints):
     print(np.dot(bdHessian, v[:,i])) #these should be equal
 
 #Plot all eigenvectors
+v = v * 5
 for i in range(n*2+constraints):
     fig, ax = plt.subplots()
 
@@ -2237,24 +2257,24 @@ for i in range(n*2+constraints):
         ax.add_artist(circle)
 
     #plot vectors
-    ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=1)
-    ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=1)
-    ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=1)
+    ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=3)
+    ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=3)
+    ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=3)
     # ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
 
     #plot bd lines
-    xmax = length*scalef
-    ymax = len_m*scalef
-    plt.plot((0, xmax/2, xmax), (ymax, scalef*(len_m+len_c)/2, ymax), c="blue")
-    plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
+    xmax = length
+    ymax = len_m
+    plt.plot((0, xmax/2, xmax), (ymax, (len_m+len_c)/2, ymax), c="blue")
+    plt.plot((0, xmax/2, xmax), (0, (len_m-len_c)/2, 0), c="blue")
 
     plt.gca().set_aspect('equal', adjustable='box')
     plt.figtext(.5,.97,"Eigenvector with eigenvalue: " + str(w[i]), fontsize=10, ha='center')
     plt.figtext(.5,.9,str(v[:,i]),fontsize=8,ha='center')
-    plt.ylim(0,60)
-    plt.xlim(0,60)
+    plt.ylim(35,125)
+    plt.xlim(100,200)
     print("saving fig..."+str(i))
-    plt.savefig("bdhess_3part_fric" + str(i))
+    plt.savefig("bdhess_3part_fric_aps" + str(i))
     plt.show()
 
 
