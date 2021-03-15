@@ -835,7 +835,7 @@ def calcFluidForceNonDim(x, y, vx, vy, u, v):
 #tau, eta - nondimentionalization constants
 #returns - forces in the x and y directions
 walltorques = np.array([[0,0]])
-walldisp = [[0,0],[0,0],[0,0]]
+walldisp = [[0,0],[0,0],[0,0],[0,0]]
 def calcPotentialWall(x, y, slope, Fxex, Fyex, R, tnet, direction, i, w, vx, vy, disp, dt):
     global walltorques
 
@@ -1100,13 +1100,13 @@ def calcHydroTorque(w, x, y, a, R):
 #         of the form: forces[i] = [[Fx_fluid, Fy_fluid], [Fx_wall, Fy_wall], [Fx_col, Fy_col]]
 #vVel, yVel - the functions for calculating the velocity at a certain position
 #
-#Returns: derivatives of each value of the position array
+#Returns: derivatives of each value of the position arsray
 #         [x0', y0', x0'', y0'', x1'...]
 omega = []
-tdisp = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
+tdisp = [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]
 # tdisp = [[0,0,0],[0,0,0],[0,0,0]]
 tlast = 0
-collision_friction = [[0,0],[0,0],[0,0]]
+collision_friction = [[0,0],[0,0],[0,0],[0,0]]
 def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vortx, friction_forces):
 
     global tlast
@@ -1297,7 +1297,7 @@ def stickPotential(x, y, xp, yp):
 # tdisp = [[0,0,0],[0,0,0],[0,0,0]]
 # tdisp = [[[0,0],[0,0]],[[0,0],[0,0]]]
 tlast = 0
-collision_friction = [[0,0],[0,0],[0,0]]
+collision_friction = [[0,0],[0,0],[0,0], [0,0]]
 # walldisp = [0]
 def stepODEFricTest(t, pos, num_parts, R, energy, forces, times, derivs):
 
@@ -1511,7 +1511,7 @@ def stepODEFricTest(t, pos, num_parts, R, energy, forces, times, derivs):
 
 velocities = []
 graphic_fric = []
-friction_forces = [0,0,0,0,0,0]
+friction_forces = [0,0,0,0,0,0,0,0]
 def runSim(num_parts, r, dt, tf, pos0, u, v):
 
     print("starting sim....")
@@ -1575,7 +1575,7 @@ def generateAnim(y, r, friction):
     fig, ax = plt.subplots()
     # plt.xlim(0,xmax)
     # plt.ylim(0,ymax)
-    plt.xlim(50,200)
+    plt.xlim(75,225)
     plt.ylim(29,138)
     # plt.pcolor(X, Y, u)
     # plt.colorbar()
@@ -1599,9 +1599,9 @@ def generateAnim(y, r, friction):
         # global patch
         positions = []
         # dots = []
-        curr_num_parts = int(len(y[:][int(timestep*5)]))
+        curr_num_parts = int(len(y[:][int(timestep*35)]))
 
-        curr_num_parts = int(len(y[:][int(timestep*5)])/6)
+        curr_num_parts = int(len(y[:][int(timestep*35)])/6)
 
         # for patch in patches:
         # patch.remove()
@@ -1609,9 +1609,9 @@ def generateAnim(y, r, friction):
         #     ax.patches.pop().remove()
 
         for i in range(curr_num_parts):
-            posx = y[:][int(timestep*5)][0+i*6]
-            posy = y[:][int(timestep*5)][1+i*6]
-            theta = y[:][int(timestep*5)][4+i*6]
+            posx = y[:][int(timestep*35)][0+i*6]
+            posy = y[:][int(timestep*35)][1+i*6]
+            theta = y[:][int(timestep*35)][4+i*6]
             positions.append((posx, posy))
 
             if (i >= len(circles)):
@@ -1634,7 +1634,7 @@ def generateAnim(y, r, friction):
         return circles#, scatter#, patch
 
     #create the animation
-    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/5), interval=1)
+    ani = animation.FuncAnimation(fig, updateParticles_2, frames=int(len(y)/35), interval=1)
 
     return ani
 
@@ -1696,6 +1696,10 @@ pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 149.5, 300, 0, 0,0,0]#, 13,24
 pos0 = [167, 67, 0, 0, 0,0, 167, 98, 0, 0,0,0, 158, 82.5, 0, 0,0,0]#, 13,24,0,0]
 pos0 = [167, 67.333, 0, 0, 0,0, 167, 99.333, 0, 0,0,0, 158, 83.333, 0, 0,0,0]#, 13,24,0,0]
 pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0]#, 13,24,0,0]
+pos0 = [120, 66.333, 0, 0, 0,0, 120, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0]#, 13,24,0,0]
+
+r = 5.5
+pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 76.333, 0, 0,0,0,110, 90.333, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
 # r = 35
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
@@ -1713,16 +1717,17 @@ pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-# trajectory, energy, forces, t, der = runSim(3, r, 0.001, 4, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(4, r, 0.001, 4.5, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
 # ani = generateAnim(trajectory, r, np.array(graphic_fric))
 # plt.show()
 #
 # print(trajectory[-1])
+#
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.0314_aps.mp4', writer=writer)
+# ani.save('clog.0314_aps_e06_4part.mp4', writer=writer)
 # plt.show()
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
@@ -1813,28 +1818,29 @@ pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0
 # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 #
 # plt.show()
-
+plt.close()
 
 v1 = []
 v2 = []
 v3 = []
-# v4 = []
+v4 = []
 for i in velocities:
     # print(i)
     v1.append(i[0])
     v2.append(i[1])
     v3.append(i[2])
-#     v4.append(i[3])
+    v4.append(i[3])
 # #
-# plt.plot(t, v1, label='particle 1')
-# plt.plot(t, v2, label='particle 2')
-# plt.plot(t, v3, label='particle 3')
-# # plt.plot(t, v4, label='particle 4')
-# plt.legend()
-# # plt.plot(v4)
-# plt.xlabel('time')
-# plt.ylabel('velocity')
-# plt.title('Velocity of particles - 4 particle bridge')
+plt.plot(t, v1, label='particle 1')
+plt.plot(t, v2, label='particle 2')
+plt.plot(t, v3, label='particle 3')
+plt.plot(t, v4, label='particle 4')
+plt.legend()
+# # # plt.plot(v4)
+plt.xlabel('time')
+plt.ylabel('velocity')
+plt.title('Velocity of particles - 4 particle bridge')
+plt.savefig("aps_velocities_4part")
 # # plt.xlim(75,85)
 # # plt.ylim(0,0.1)
 # # plt.xlim(70,104)
@@ -2011,9 +2017,30 @@ R = 6.7
 # friction_by_particle = [3.6059191958025135e-07, 1.0096927369827408e-07, 3.5904737596850164e-07, -9.552436429875207e-08, -3.5904737596850164e-07, 9.552436429875207e-08]
 
 
-friction_by_particle = [-0.004081659728288158, -0.001466628893092921, -0.003847638154290543, 0.0017874456980855437, 0.0012249661179661966, 0.0013360835875541514]
-pos_stable = [ 1.42082867e+02,  7.04848431e+01, 1.43474557e+02,  9.55965687e+01,1.38215242e+02,  8.32932228e+01]
+# friction_by_particle = [-0.004081659728288158, -0.001466628893092921, -0.003847638154290543, 0.0017874456980855437, 0.0012249661179661966, 0.0013360835875541514]
+# pos_stable = [ 1.42082867e+02,  7.04848431e+01, 1.43474557e+02,  9.55965687e+01,1.38215242e+02,  8.32932228e+01]
 
+# friction_by_particle = [-0.06976090836149891, -0.027310522831100963, -0.08585546264091237, 0.03838146576915571, 0.0350977725142717, 0.0065195770769488825]
+# pos_stable = [ 1.42114938e+02,  7.05102973e+01, 1.43367561e+02,  9.56328420e+01,1.38123291e+02,  8.33018221e+01,]
+
+
+# friction_by_particle = [-0.048113421429412294, -0.01958243843680122, -0.06897832315392756, 0.030636904835606712, 0.02347637943197748, 0.0023873161150028822, 0, 0]
+# pos_stable = [ 1.42173737e+02,  7.05364435e+01, 1.43363368e+02,  9.56346995e+01,1.38113060e+02,  8.33062356e+01]
+
+# friction_by_particle = [-0.0043190778636636295, -0.0013945052471657775, -0.006240151606388189, 0.002821040315072728, 0.0038455720908049935, 0.0011872203977535403, 0, 0]
+# pos_stable = [ 1.42205572e+02,  7.05447590e+01, 1.43202366e+02,  9.57131071e+01,1.38161895e+02,  8.33093223e+01]
+
+# friction_by_particle = [-0.003860555093102859, -0.0013718957173891766, -0.0034586517414265236, 0.0016123372004962341, 0.0012508621666202971, 0.0013096098867819007]
+# pos_stable = [ 1.42088892e+02,  7.04875894e+01, 1.43464600e+02,  9.56010603e+01, 1.38214534e+02,  8.32939542e+01]
+
+
+#4part
+# [-0.05946252272392485, -0.03741901819211818, -0.0631525071957556, 0.04038594654128133, 0.015211641636439524, 0.021713893217224882, 0.032204684004839446, -0.022603644911751566]
+# [146.39315063  71.09900042   6.03289539   2.68197456  -1.1242248
+#   -1.00315306 147.27357434  95.20960236   6.71374769  -2.98464589
+#    0.61911304   1.25207711 137.87673746  78.06097758   4.29740473
+#    0.5590421    0.24403143   3.08675859 138.15497778  89.05739479
+#    4.32326233   0.55841687  -2.10674424  -3.46328776]
 
 # print(pos_stable)
 
@@ -2274,7 +2301,7 @@ for i in range(n*2+constraints):
     plt.ylim(35,125)
     plt.xlim(100,200)
     print("saving fig..."+str(i))
-    plt.savefig("bdhess_3part_fric_aps" + str(i))
+    plt.savefig("bdhess_3part_fric_aps_3" + str(i))
     plt.show()
 
 
