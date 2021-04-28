@@ -982,7 +982,7 @@ def attractiveForce(xi, yi, xj, yj, R):
     rij = (xi-xj, yi-yj)
     unit = unitVec(rij)
 
-    f = 2*(2*R - distance)
+    f = 2*(2*R - distance) * abs(2*R-distance)
 
     return f*unit[0], f*unit[1]
 
@@ -1144,10 +1144,11 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
             if j != i:
                 distance = math.sqrt((x-pos[j*6])**2 + (y-pos[j*6+1])**2)
 
+                xj = pos[j*6]
+                yj = pos[j*6+1]
+
                 #if the particles overlap
                 if (distance < 2*R):
-                    xj = pos[j*6]
-                    yj = pos[j*6+1]
                     vxj = pos[j*6+2]
                     vyj = pos[j*6+3]
                     wj = pos[j*6+5]
@@ -1172,14 +1173,6 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     # print(Fx, Fx/mass)
                     # Fa_x, Fa_y = calcAdhesiveForce(R, x, y, xj, yj)
 
-                    # Fx_col += Fa_x
-                    # Fy_col += Fa_y
-
-                    # if j==0 and i==3 or j==3 and i==0:
-                    #     Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
-                    #     Fx_col += Fx_atr
-                    #     Fy_col += Fy_atr
-
                 #else not in contact
                 else:
                     # print("no contact")
@@ -1187,6 +1180,13 @@ def stepODE(t, pos, num_parts, R, energy, forces, times, derivs, xVel, yVel, vor
                     # print("reset")
                     tdisp[i][j] = [0,0]
                     # tdisp[i][j*2+1] = 0
+
+                    if j==0 and i==3 or j==3 and i==0:
+                        Fx_atr, Fy_atr = attractiveForce(x, y, xj, yj, R)
+                        Fx_col += Fx_atr * 10**-4
+                        Fy_col += Fy_atr * 10**-4
+                        # print(Fx_atr, Fy_atr)
+
 
                 # if (i==0 and j ==2):
                 #     print("displacecment", tdisp[i][j], tdisp[j][i])
@@ -1698,8 +1698,13 @@ pos0 = [167, 67.333, 0, 0, 0,0, 167, 99.333, 0, 0,0,0, 158, 83.333, 0, 0,0,0]#, 
 pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0]#, 13,24,0,0]
 pos0 = [120, 66.333, 0, 0, 0,0, 120, 100.333, 0, 0,0,0, 110, 83.333, 0, 0,0,0]#, 13,24,0,0]
 
-r = 5.5
-pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 76.333, 0, 0,0,0,110, 90.333, 0, 0,0,0]#, 13,24,0,0]
+#dimer
+
+pos0 = [102,72,0,0,0,0, 120, 100.333, 0, 0,0,0,120, 66.333, 0, 0, 0,0,110, 83.333, 0, 0,0,0]#, 13,24,0,0]
+
+
+# r = 5.5
+# pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 76.333, 0, 0,0,0,110, 90.333, 0, 0,0,0]#, 13,24,0,0]
 # pos0 = [210, 210, 0, 0, 0,0, 210.2, 390, 0, 0,0,0, 140, 300, 0, 0,0,0]#, 13,24,0,0]
 # r = 35
 # pos0 = [210, 210, 0, 0, 0,0, 210, 390, 0, 0,0,0, 150, 300, 0, 0,0,0]#, 13,24,0,0]
@@ -1717,17 +1722,17 @@ pos0 = [120, 66.333, 0, 0, 0,0, 120.01, 100.333, 0, 0,0,0, 110, 76.333, 0, 0,0,0
 # pos0 = [21, 21, 0, 0, 0, 0, 21, 39, 0, 0, 0, 0, 15.049290466308596, 30, 0, 0,0,0]#, 13,24,0,0]
 # print(pos0)
 # pos0 = [210, 240, 0,0,0,0,210,360,0,0,0,0]
-trajectory, energy, forces, t, der = runSim(4, r, 0.001, 4.5, pos0, u, v)
+trajectory, energy, forces, t, der = runSim(4, r, 0.001, 0.05, pos0, u, v)
 # r = 25.0001
 # trajectory, energy, forces, t, der = runSim(2, r, 0.01, 0.8, pos0, u, v)
-# ani = generateAnim(trajectory, r, np.array(graphic_fric))
-# plt.show()
+ani = generateAnim(trajectory, r, np.array(graphic_fric))
+plt.show()
 #
 # print(trajectory[-1])
 #
 # Writer = animation.writers['ffmpeg']
 # writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-# ani.save('clog.0314_aps_e06_4part.mp4', writer=writer)
+# ani.save('clog.0416_nofric.mp4', writer=writer)
 # plt.show()
 
 # x1 = [trajectory[:][i][i] for i in range(len(t))]
@@ -1818,29 +1823,29 @@ trajectory, energy, forces, t, der = runSim(4, r, 0.001, 4.5, pos0, u, v)
 # plt.plot((0, xmax/2, xmax), (0, scalef*(len_m-len_c)/2, 0), c="blue")
 #
 # plt.show()
-plt.close()
+# plt.close()
 
 v1 = []
 v2 = []
 v3 = []
 v4 = []
-for i in velocities:
-    # print(i)
-    v1.append(i[0])
-    v2.append(i[1])
-    v3.append(i[2])
-    v4.append(i[3])
+# for i in velocities:
+#     # print(i)
+#     v1.append(i[0])
+#     v2.append(i[1])
+#     v3.append(i[2])
+    # v4.append(i[3])
 # #
-plt.plot(t, v1, label='particle 1')
-plt.plot(t, v2, label='particle 2')
-plt.plot(t, v3, label='particle 3')
-plt.plot(t, v4, label='particle 4')
-plt.legend()
-# # # plt.plot(v4)
-plt.xlabel('time')
-plt.ylabel('velocity')
-plt.title('Velocity of particles - 4 particle bridge')
-plt.savefig("aps_velocities_4part")
+# plt.plot(t, v1, label='particle 1')
+# plt.plot(t, v2, label='particle 2')
+# plt.plot(t, v3, label='particle 3')
+# # plt.plot(t, v4, label='particle 4')
+# plt.legend()
+# # # # plt.plot(v4)
+# plt.xlabel('time')
+# plt.ylabel('velocity')
+# plt.title('Velocity of particles - 3 particle bridge')
+# plt.savefig("0416_velocities_nofric")
 # # plt.xlim(75,85)
 # # plt.ylim(0,0.1)
 # # plt.xlim(70,104)
@@ -1943,6 +1948,10 @@ wf = []
 n = 3
 R = 6.7
 
+
+n=4
+R=5.5
+
 #Get the stable point at a certain timestep of a simulation
 # fig, ax = plt.subplots()
 # index = 0
@@ -2030,17 +2039,14 @@ R = 6.7
 # friction_by_particle = [-0.0043190778636636295, -0.0013945052471657775, -0.006240151606388189, 0.002821040315072728, 0.0038455720908049935, 0.0011872203977535403, 0, 0]
 # pos_stable = [ 1.42205572e+02,  7.05447590e+01, 1.43202366e+02,  9.57131071e+01,1.38161895e+02,  8.33093223e+01]
 
+
 # friction_by_particle = [-0.003860555093102859, -0.0013718957173891766, -0.0034586517414265236, 0.0016123372004962341, 0.0012508621666202971, 0.0013096098867819007]
 # pos_stable = [ 1.42088892e+02,  7.04875894e+01, 1.43464600e+02,  9.56010603e+01, 1.38214534e+02,  8.32939542e+01]
 
 
-#4part
-# [-0.05946252272392485, -0.03741901819211818, -0.0631525071957556, 0.04038594654128133, 0.015211641636439524, 0.021713893217224882, 0.032204684004839446, -0.022603644911751566]
-# [146.39315063  71.09900042   6.03289539   2.68197456  -1.1242248
-#   -1.00315306 147.27357434  95.20960236   6.71374769  -2.98464589
-#    0.61911304   1.25207711 137.87673746  78.06097758   4.29740473
-#    0.5590421    0.24403143   3.08675859 138.15497778  89.05739479
-#    4.32326233   0.55841687  -2.10674424  -3.46328776]
+# 4part
+# friction_by_particle = [-0.05946252272392485, -0.03741901819211818, -0.0631525071957556, 0.04038594654128133, 0.'015211641636439524, 0.021713893217224882, 0.032204684004839446, -0.022603644911751566]
+# pos_stable = [146.39315063,  71.09900042, 147.27357434 , 95.20960236,137.87673746 , 78.06097758, 138.15497778,  '89.05739479,]
 
 # print(pos_stable)
 
@@ -2287,7 +2293,7 @@ for i in range(n*2+constraints):
     ax.arrow(pos_stable[0], pos_stable[1], v[:,i][0+constraints]*3, v[:,i][1+constraints]*3, head_width=3)
     ax.arrow(pos_stable[2], pos_stable[3], v[:,i][2+constraints]*3, v[:,i][3+constraints]*3, head_width=3)
     ax.arrow(pos_stable[4], pos_stable[5], v[:,i][4+constraints]*3, v[:,i][5+constraints]*3, head_width=3)
-    # ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
+    ax.arrow(pos_stable[6], pos_stable[7], v[:,i][6+constraints]*3, v[:,i][7+constraints]*3, head_width=1)
 
     #plot bd lines
     xmax = length
@@ -2301,7 +2307,7 @@ for i in range(n*2+constraints):
     plt.ylim(35,125)
     plt.xlim(100,200)
     print("saving fig..."+str(i))
-    plt.savefig("bdhess_3part_fric_aps_3" + str(i))
+    plt.savefig("bdhess_4part_fric_thesis" + str(i))
     plt.show()
 
 
@@ -2395,6 +2401,7 @@ plt.xticks(x_pos, labels)
 plt.title("Particle Motion Comparaison with Eigenvectors: "+str(n)+" Particles")
 plt.xlabel("Eigenvalue: red is positive, blue negative")
 plt.ylabel("Coefficients (normalized) on associated eigenvector")
+plt.yscale('log')
 plt.show()
 
 #=====================================================
